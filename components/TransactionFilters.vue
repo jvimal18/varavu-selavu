@@ -118,7 +118,7 @@ const activeCount = computed(() => {
         @change="setFilter('spentBy', ($event.target as HTMLSelectElement).value || undefined)"
         class="input text-sm"
       >
-        <option value="">Spent by anyone</option>
+        <option value="">Any person</option>
         <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
       </select>
 

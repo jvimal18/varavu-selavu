@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useAccounts, type Account } from '~/composables/useAccounts'
+import { useDataVersion } from '~/composables/useDataVersion'
 
 const { accounts, fetchAll, archive } = useAccounts()
+const { version } = useDataVersion()
 const showForm = ref(false)
 const editing = ref<Account | null>(null)
 
 onMounted(() => fetchAll())
+watch(version, () => fetchAll())
 
 const primary = computed(() => accounts.value.find((a) => a.type === 'bank') || accounts.value[0])
 const others = computed(() => accounts.value.filter((a) => a !== primary.value))

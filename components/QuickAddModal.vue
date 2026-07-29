@@ -304,9 +304,9 @@ const amountDisplay = computed(() => {
               </div>
             </div>
 
-            <!-- Spent by -->
-            <div>
-              <label class="label">Spent by</label>
+            <!-- Spent by / Received by (hidden for transfers) -->
+            <div v-if="type !== 'transfer'">
+              <label class="label">{{ type === 'income' ? 'Received by' : 'Spent by' }}</label>
               <div class="flex bg-cream-200 rounded-xl p-1 mt-1.5">
                 <button
                   v-for="u in users"

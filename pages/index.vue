@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, watch } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import { useDashboard } from '~/composables/useDashboard'
+import { useDataVersion } from '~/composables/useDataVersion'
 import { displayMonth, greetingForHour } from '~/utils/dates'
 import { formatPaise, formatPaiseCompact } from '~/utils/money'
 
 const auth = useAuthStore()
 const { data, loading, fetch } = useDashboard()
+const { version } = useDataVersion()
 const now = new Date()
 
 onMounted(() => fetch())
+watch(version, () => fetch())
 
 const expenseBudgetPct = computed(() => {
   if (!data.value?.monthBudget) return 0

@@ -3,12 +3,14 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAccounts, type Account } from '~/composables/useAccounts'
 import { useTransactions } from '~/composables/useTransactions'
+import { useDataVersion } from '~/composables/useDataVersion'
 import { formatPaise, formatPaiseCompact } from '~/utils/money'
 
 const route = useRoute()
 const router = useRouter()
 const { accounts, byId, fetchAll } = useAccounts()
 const { transactions, fetchAll: fetchTxns } = useTransactions()
+const { version } = useDataVersion()
 
 const account = ref<Account | null>(null)
 const showForm = ref(false)
@@ -22,6 +24,7 @@ async function load() {
 
 onMounted(load)
 watch(() => route.params.id, load)
+watch(version, () => load())
 
 const accountTxns = computed(() => {
   if (!account.value) return []

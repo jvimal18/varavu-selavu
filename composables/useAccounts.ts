@@ -36,18 +36,24 @@ export const useAccounts = () => {
   async function create(input: Partial<Account> & { name: string; type: Account['type']; openingBalance: number }) {
     const { account } = await $fetch<{ account: Account }>('/api/accounts', { method: 'POST', body: input })
     accounts.value = [account, ...accounts.value]
+    const { bump } = useDataVersion()
+    bump()
     return account
   }
 
   async function update(id: string, patch: Partial<Account>) {
     const { account } = await $fetch<{ account: Account }>(`/api/accounts/${id}`, { method: 'PATCH', body: patch })
     accounts.value = accounts.value.map((a) => (a.id === id ? account : a))
+    const { bump } = useDataVersion()
+    bump()
     return account
   }
 
   async function archive(id: string) {
     await $fetch(`/api/accounts/${id}`, { method: 'DELETE' })
     accounts.value = accounts.value.filter((a) => a.id !== id)
+    const { bump } = useDataVersion()
+    bump()
   }
 
   function byId(id: string | null | undefined): Account | undefined {

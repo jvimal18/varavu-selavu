@@ -6,6 +6,7 @@ import { useCategories } from '~/composables/useCategories'
 import { useAccounts } from '~/composables/useAccounts'
 import { useUsers } from '~/composables/useUsers'
 import { useAuthStore } from '~/stores/auth'
+import { useDataVersion } from '~/composables/useDataVersion'
 import { rupeesToPaise } from '~/utils/money'
 import { todayISO } from '~/utils/dates'
 
@@ -15,6 +16,7 @@ const { transactions, fetchAll, update, remove } = useTransactions()
 const { categories, roots, fetchAll: fetchCats } = useCategories()
 const { accounts, fetchAll: fetchAccts } = useAccounts()
 const { users, fetchAll: fetchUsers } = useUsers()
+const { version } = useDataVersion()
 
 const txn = ref<Transaction | null>(null)
 const type = ref<'expense' | 'income' | 'transfer'>('expense')
@@ -33,6 +35,7 @@ onMounted(async () => {
   load()
 })
 watch(() => route.params.id, () => load())
+watch(version, () => load())
 
 function load() {
   const t = transactions.value.find((x) => x.id === route.params.id)
@@ -174,9 +177,9 @@ async function onDelete() {
         </div>
       </div>
 
-      <!-- Spent by -->
-      <div>
-        <label class="label">Spent by</label>
+      <!-- Person (Spent by / Received by) -->
+      <div v-if="type !== 'transfer'">
+        <label class="label">{{ type === 'income' ? 'Received by' : 'Spent by' }}</label>
         <div class="flex bg-cream-200 rounded-xl p-1 mt-1.5">
           <button
             v-for="u in users"

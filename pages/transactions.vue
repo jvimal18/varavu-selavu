@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useTransactions, type TransactionFilters } from '~/composables/useTransactions'
+import { useDataVersion } from '~/composables/useDataVersion'
 import { formatPaise } from '~/utils/money'
 
 const { transactions, fetchAll } = useTransactions()
+const { version } = useDataVersion()
 const filters = ref<TransactionFilters>({ limit: 200 })
 
 const showQuickAdd = ref(false)
@@ -14,6 +16,8 @@ async function load() {
 
 onMounted(load)
 watch(filters, () => load(), { deep: true })
+// Refetch when any mutation happens (create/update/delete via modal or edit page)
+watch(version, () => load())
 
 const totals = computed(() => {
   let income = 0, expense = 0
