@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 
 const auth = useAuthStore()
@@ -14,7 +14,9 @@ const pinError = ref<string | null>(null)
 onMounted(async () => {
   const data = await $fetch<{ users: typeof users.value }>('/api/auth/users')
   users.value = data.users
+  window.addEventListener('keydown', onSwitchKeydown)
 })
+onUnmounted(() => window.removeEventListener('keydown', onSwitchKeydown))
 
 async function switchTo(userId: string) {
   const u = users.value.find((x) => x.id === userId)
@@ -56,6 +58,17 @@ function pressKey(digit: string) {
   if (digit === 'del') { pinInput.value = pinInput.value.slice(0, -1); return }
   if (pinInput.value.length >= 6) return
   pinInput.value += digit
+}
+
+// Keyboard support for the switch-user PIN numpad
+function onSwitchKeydown(e: KeyboardEvent) {
+  if (!showPinDialog.value) return
+  const t = e.target as HTMLElement
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+  if (e.key === 'Escape') { e.preventDefault(); showPinDialog.value = false; return }
+  if (/^[0-9]$/.test(e.key)) { e.preventDefault(); pressKey(e.key); return }
+  if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); pressKey('del'); return }
+  if (e.key === 'Enter') { e.preventDefault(); confirmSwitch(); return }
 }
 </script>
 

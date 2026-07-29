@@ -149,11 +149,19 @@ async function save() {
   }
 }
 
-// Keyboard: Esc to close, Cmd/Ctrl+Enter to save
+// Keyboard: Esc to close, Cmd/Ctrl+Enter to save, digits/./Backspace to enter amount
 function onKeydown(e: KeyboardEvent) {
   if (!props.modelValue) return
-  if (e.key === 'Escape') { e.preventDefault(); close() }
-  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); save() }
+  // Don't intercept while the user is typing in a form field (description, date, select)
+  const t = e.target as HTMLElement
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return
+
+  if (e.key === 'Escape') { e.preventDefault(); close(); return }
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); save(); return }
+  if (/^[0-9]$/.test(e.key)) { e.preventDefault(); pressKey(e.key); return }
+  if (e.key === '.') { e.preventDefault(); pressKey('.'); return }
+  if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); pressKey('del'); return }
+  if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) { e.preventDefault(); save(); return }
 }
 
 onMounted(() => window.addEventListener('keydown', onKeydown))
