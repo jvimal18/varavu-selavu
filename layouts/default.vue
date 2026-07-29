@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 
 const auth = useAuthStore()
 const route = useRoute()
+const showQuickAdd = ref(false)
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: 'layout-dashboard' },
@@ -14,6 +16,19 @@ const navItems = [
 const upcomingItems = [
   { to: '/categories', label: 'Categories', icon: 'layout-grid' },
 ]
+
+function onKeydown(e: KeyboardEvent) {
+  // Don't open with / if user is typing in a form field
+  const t = e.target as HTMLElement
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return
+  if (e.key === '/') {
+    e.preventDefault()
+    showQuickAdd.value = true
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
@@ -97,7 +112,15 @@ const upcomingItems = [
             <span class="font-bold text-ink-900">VaravuSelavu</span>
           </NuxtLink>
           <div class="flex-1" />
-          <div v-if="auth.user" class="hidden md:flex items-center gap-2 text-sm text-ink-700">
+          <button
+            @click="showQuickAdd = true"
+            class="btn-primary hidden sm:inline-flex"
+          >
+            <Icon name="lucide:plus" size="14" />
+            Quick add
+            <kbd class="hidden md:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-mono bg-white/20 rounded">/</kbd>
+          </button>
+          <div v-if="auth.user" class="hidden lg:flex items-center gap-2 text-sm text-ink-700">
             <div
               class="avatar w-7 h-7 rounded-full text-xs"
               :style="{ backgroundColor: auth.user.color }"
@@ -107,9 +130,17 @@ const upcomingItems = [
         </div>
       </header>
 
-      <main class="flex-1 px-5 md:px-8 py-6 max-w-[1400px] w-full mx-auto pb-24 md:pb-8">
+      <main class="flex-1 px-5 md:px-8 py-6 max-w-[1400px] w-full mx-auto pb-28 md:pb-8">
         <slot />
       </main>
+
+      <!-- Mobile FAB -->
+      <button
+        @click="showQuickAdd = true"
+        class="md:hidden fixed right-4 bottom-20 w-14 h-14 rounded-2xl bg-terra-700 text-white shadow-lift z-20 flex items-center justify-center"
+      >
+        <Icon name="lucide:plus" size="26" />
+      </button>
 
       <!-- Mobile bottom nav -->
       <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-cream-50 border-t border-ink-200 px-2 pt-1.5 pb-5 flex items-center justify-around z-20">
@@ -127,5 +158,7 @@ const upcomingItems = [
         </NuxtLink>
       </nav>
     </div>
+
+    <QuickAddModal v-model="showQuickAdd" />
   </div>
 </template>

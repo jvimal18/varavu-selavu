@@ -1,0 +1,96 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import type { Transaction } from '~/composables/useTransactions'
+import { useCategories } from '~/composables/useCategories'
+import { useAccounts } from '~/composables/useAccounts'
+import { useUsers } from '~/composables/useUsers'
+import { formatSigned } from '~/utils/money'
+import { displayShortDate } from '~/utils/dates'
+
+const props = defineProps<{ transaction: Transaction; compact?: boolean }>()
+
+const { byId: catById } = useCategories()
+const { byId: acctById } = useAccounts()
+const { byId: userById } = useUsers()
+
+const category = computed(() => catById(props.transaction.categoryId))
+const account = computed(() => acctById(props.transaction.accountId))
+const toAccount = computed(() => acctById(props.transaction.toAccountId))
+const user = computed(() => userById(props.transaction.spentBy))
+
+const accountLabel = computed(() => {
+  if (props.transaction.type === 'transfer') {
+    return `${account.value?.name || '—'} → ${toAccount.value?.name || '—'}`
+  }
+  return account.value?.name || '—'
+})
+
+const amountClass = computed(() => {
+  if (props.transaction.type === 'income') return 'text-success-700'
+  if (props.transaction.type === 'transfer') return 'text-warn-700'
+  return 'text-ink-900'
+})
+</script>
+
+<template>
+  <NuxtLink
+    :to="`/transactions/${transaction.id}`"
+    class="row-hover -mx-2 px-2 py-2 rounded-lg flex items-center gap-3 group"
+  >
+    <!-- Icon -->
+    <div
+      class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+      :class="transaction.type === 'income' ? 'bg-success-50' : transaction.type === 'transfer' ? 'bg-warn-50' : 'bg-cream-200'"
+    >
+      <Icon
+        v-if="transaction.type === 'transfer'"
+        name="lucide:arrow-right-left"
+        :class="amountClass"
+        size="16"
+      />
+      <Icon
+        v-else-if="category"
+        :name="`lucide:${category.icon || 'circle-dot'}`"
+        :style="{ color: category.color || '#78716C' }"
+        size="16"
+      />
+      <Icon
+        v-else
+        name="lucide:circle-dot"
+        class="text-ink-500"
+        size="16"
+      />
+    </div>
+
+    <!-- Description + meta -->
+    <div class="flex-1 min-w-0">
+      <div class="text-sm font-medium text-ink-900 truncate">
+        {{ transaction.description || (category?.name || 'Transfer') }}
+      </div>
+      <div class="text-[11px] text-ink-500 flex items-center gap-1.5 mt-0.5">
+        <span v-if="!compact">{{ category?.name || 'Transfer' }}</span>
+        <span v-if="!compact" class="text-ink-300">·</span>
+        <span class="truncate">{{ accountLabel }}</span>
+      </div>
+    </div>
+
+    <!-- Spent by avatar (desktop) -->
+    <div v-if="user && !compact" class="hidden sm:flex items-center gap-1 flex-shrink-0">
+      <div
+        class="avatar w-5 h-5 rounded-full text-[10px]"
+        :style="{ backgroundColor: user.color }"
+      >{{ user.name[0] }}</div>
+      <span class="text-[10px] text-ink-500">{{ user.name }}</span>
+    </div>
+
+    <!-- Amount -->
+    <div class="text-right flex-shrink-0">
+      <div class="num text-sm font-semibold" :class="amountClass">
+        {{ formatSigned(transaction.amount, transaction.type) }}
+      </div>
+      <div class="text-[10px] text-ink-400 mt-0.5 hidden sm:block">
+        {{ displayShortDate(transaction.date) }}
+      </div>
+    </div>
+  </NuxtLink>
+</template>
