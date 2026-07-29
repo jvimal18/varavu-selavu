@@ -1,0 +1,35 @@
+# Nuxt
+.nuxt
+.output
+.data
+.cache
+build
+.env
+.env.local
+*.log
+
+# Node
+node_modules
+.pnpm-store
+
+# Database (local dev)
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Exports
+exports/
+
+# IDE
+.vscode
+.idea
+.DS_Store
+
+# Tooling (opencode/claude)
+.opencode/
+.agents/
+.claude/
+
+# Drizzle migrations ARE tracked

@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-cream-100 text-ink-900;
+  }
+  *:focus-visible {
+    @apply outline-none ring-2 ring-terra-300 ring-offset-2 ring-offset-cream-100;
+  }
+  /* Preserve focus on form inputs specifically */
+  input:focus-visible,
+  button:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  a:focus-visible {
+    @apply ring-2 ring-terra-500 ring-offset-1;
+  }
+  /* Tabular numbers for monetary values */
+  .num {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl border border-ink-100 shadow-card;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors;
+  }
+  .btn-primary {
+    @apply btn bg-terra-700 text-white hover:bg-terra-800 active:translate-y-px;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-ink-900 border border-ink-200 hover:border-ink-300 hover:bg-cream-50;
+  }
+  .btn-ghost {
+    @apply btn text-ink-700 hover:bg-cream-200;
+  }
+  .input {
+    @apply w-full px-3 py-2.5 bg-white border border-ink-200 rounded-lg text-sm placeholder:text-ink-400 focus:border-terra-700 focus:outline-none;
+  }
+  .label {
+    @apply text-[11px] font-semibold text-ink-500 uppercase tracking-wider;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors;
+  }
+  .avatar {
+    @apply inline-flex items-center justify-center font-semibold text-white;
+  }
+}

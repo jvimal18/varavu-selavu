@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VaravuSelavu — Sprint 0 Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+          },
+          colors: {
+            cream: { 50: '#FDFBF7', 100: '#FAF7F2', 200: '#F5F1EB', 300: '#EDE7DE' },
+            ink: { 900: '#1C1917', 800: '#292524', 700: '#44403C', 500: '#78716C', 400: '#A8A29E', 300: '#D6D3D1', 200: '#E7E5E4', 100: '#F1EFEC' },
+            terra: { 50: '#FFF7ED', 100: '#FFEDD5', 200: '#FED7AA', 300: '#FDBA74', 500: '#F97316', 600: '#EA580C', 700: '#C2410C', 800: '#9A3412' },
+            success: { 50: '#F0FDF4', 600: '#16A34A', 700: '#15803D' },
+            danger: { 50: '#FEF2F2', 600: '#DC2626', 700: '#B91C1C' },
+            warn: { 50: '#FFFBEB', 600: '#D97706', 700: '#B45309' },
+            sage: { 500: '#4D7C5A', 600: '#3F6349' },
+            rose: { 600: '#BE185D' },
+            violet: { 600: '#6D28D9' },
+            teal: { 600: '#0F766E' },
+          },
+          boxShadow: {
+            'soft': '0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.06)',
+            'card': '0 1px 2px rgba(28, 25, 23, 0.04), 0 4px 12px rgba(28, 25, 23, 0.04)',
+            'lift': '0 4px 6px rgba(28, 25, 23, 0.05), 0 12px 28px rgba(28, 25, 23, 0.08)',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    html { font-family: 'Inter', system-ui, sans-serif; }
+    body { background: #FAF7F2; color: #1C1917; -webkit-font-smoothing: antialiased; }
+    .num { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .scroll-hidden::-webkit-scrollbar { display: none; }
+    .scroll-hidden { scrollbar-width: none; }
+    .num-key { transition: all 120ms ease; }
+    .num-key:active { transform: scale(0.96); background: #F5F1EB; }
+    .fade-in { animation: fadeIn 200ms ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .nav-item { transition: all 150ms ease; }
+    .nav-item:hover { background: #F5F1EB; }
+    .nav-item.active { background: #FFF7ED; color: #C2410C; }
+    .nav-item.active svg { color: #C2410C; }
+    .row-hover { transition: background 120ms ease; }
+    .row-hover:hover { background: #FDFBF7; }
+    .chip { transition: all 120ms ease; }
+    .chip:hover { border-color: #D6D3D1; }
+    .chip.active { background: #FFF7ED; border-color: #C2410C; color: #C2410C; }
+    .btn-primary { transition: all 150ms ease; }
+    .btn-primary:hover { background: #9A3412; }
+    .btn-primary:active { transform: translateY(1px); }
+    .modal-backdrop { background: rgba(28, 25, 23, 0.4); backdrop-filter: blur(2px); }
+    .phone-frame { box-shadow: 0 0 0 12px #1C1917, 0 0 0 14px #44403C, 0 30px 80px rgba(28, 25, 23, 0.3); border-radius: 44px; }
+    .avatar { display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: white; }
+  </style>
+</head>
+<body class="font-sans">
+
+  <!-- ============================================================= -->
+  <!-- MOCKUP BANNER                                                 -->
+  <!-- ============================================================= -->
+  <div class="bg-ink-900 text-cream-100 text-center py-2 text-xs font-medium tracking-wide">
+    <span class="inline-flex items-center gap-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-terra-500 animate-pulse"></span>
+      SPRINT 0 MOCKUP &nbsp;·&nbsp; TERRACOTTA PALETTE &nbsp;·&nbsp; NOT THE REAL APP
+    </span>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- APP SHELL (Desktop)                                           -->
+  <!-- ============================================================= -->
+  <div class="hidden md:flex min-h-[calc(100vh-32px)]">
+
+    <!-- SIDEBAR -->
+    <aside class="w-60 border-r border-ink-200 bg-cream-50 flex flex-col">
+      <!-- Logo -->
+      <div class="px-5 py-5 flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-terra-700 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg>
+        </div>
+        <div>
+          <div class="font-bold text-ink-900 leading-tight">VaravuSelavu</div>
+          <div class="text-[10px] text-ink-500 uppercase tracking-wider leading-tight">Budget Tracker</div>
+        </div>
+      </div>
+
+      <!-- User switcher -->
+      <div class="mx-3 mb-3 p-2.5 rounded-xl border border-ink-200 bg-white flex items-center gap-2.5 cursor-pointer hover:border-ink-300">
+        <div class="avatar w-8 h-8 rounded-full bg-terra-700 text-sm">V</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold text-ink-900 leading-tight">Vimal</div>
+          <div class="text-[11px] text-ink-500">Personal</div>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-ink-400"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+
+      <!-- Nav -->
+      <nav class="flex-1 px-3 space-y-0.5">
+        <a class="nav-item active flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
+        </a>
+        <a class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-ink-700">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/></svg>
+          Transactions
+        </a>
+        <a class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-ink-700">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          Accounts
+          <span class="ml-auto text-[10px] font-semibold bg-cream-200 text-ink-700 px-1.5 py-0.5 rounded">4</span>
+        </a>
+        <a class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-ink-700">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-3a2 2 0 0 1-2-2V2"/><path d="M9 18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3Z"/><path d="M14 2H6a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z"/><path d="M22 12h-8a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/></svg>
+          Categories
+        </a>
+
+        <div class="pt-4 pb-1.5 px-3 text-[10px] font-semibold text-ink-400 uppercase tracking-wider">Coming in v2</div>
+        <a class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-ink-400 cursor-not-allowed">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          Budgets
+        </a>
+        <a class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-ink-400 cursor-not-allowed">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Reports
+        </a>
+        <a class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-ink-400 cursor-not-allowed">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          Goals
+        </a>
+      </nav>
+
+      <!-- Settings at bottom -->
+      <div class="p-3 border-t border-ink-200">
+        <a class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-ink-700">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          Settings
+        </a>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 overflow-x-hidden">
+
+      <!-- Top bar -->
+      <header class="bg-cream-100/80 backdrop-blur border-b border-ink-200 sticky top-0 z-10">
+        <div class="px-8 py-4 flex items-center gap-4">
+          <div>
+            <div class="text-xs text-ink-500 font-medium">July 2026</div>
+            <h1 class="text-xl font-bold text-ink-900">Good evening, Vimal</h1>
+          </div>
+          <div class="flex-1 max-w-md mx-auto">
+            <div class="relative">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" placeholder="Search transactions, accounts, categories…" class="w-full pl-10 pr-4 py-2 text-sm bg-white border border-ink-200 rounded-lg focus:outline-none focus:border-terra-700 focus:ring-2 focus:ring-terra-100 placeholder:text-ink-400" />
+              <kbd class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-ink-400 font-mono bg-cream-200 border border-ink-200 px-1.5 py-0.5 rounded">/</kbd>
+            </div>
+          </div>
+          <button class="p-2 hover:bg-cream-200 rounded-lg text-ink-700" title="Toggle theme">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+          </button>
+          <button id="open-quick-add" class="btn-primary inline-flex items-center gap-1.5 bg-terra-700 text-white px-3.5 py-2 rounded-lg text-sm font-semibold shadow-soft">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Quick add
+          </button>
+        </div>
+      </header>
+
+      <div class="p-8 space-y-6 max-w-[1400px] mx-auto">
+
+        <!-- HERO STATS -->
+        <section class="grid grid-cols-4 gap-4">
+          <!-- Net worth -->
+          <div class="bg-white rounded-2xl p-5 shadow-card border border-ink-100">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-xs font-semibold text-ink-500 uppercase tracking-wider">Net Worth</div>
+              <div class="w-7 h-7 rounded-lg bg-terra-50 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 17a5 5 0 0 0 10 0c0-2.76-2.5-5-5-3-2.5-2-5 .24-5 3Z"/><path d="M12 17a5 5 0 0 0 10 0c0-2.76-2.5-5-5-3-2.5-2-5 .24-5 3Z"/></svg>
+              </div>
+            </div>
+            <div class="num text-3xl font-bold text-ink-900">₹4,12,300</div>
+            <div class="flex items-center gap-1.5 mt-2 text-xs">
+              <span class="inline-flex items-center gap-0.5 text-success-700 font-semibold">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>
+                ₹9,820
+              </span>
+              <span class="text-ink-500">from last month</span>
+            </div>
+          </div>
+
+          <!-- Income -->
+          <div class="bg-white rounded-2xl p-5 shadow-card border border-ink-100">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-xs font-semibold text-ink-500 uppercase tracking-wider">Income · July</div>
+              <div class="w-7 h-7 rounded-lg bg-success-50 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+              </div>
+            </div>
+            <div class="num text-3xl font-bold text-ink-900">₹1,85,000</div>
+            <div class="text-xs text-ink-500 mt-2">From 2 sources</div>
+          </div>
+
+          <!-- Expense -->
+          <div class="bg-white rounded-2xl p-5 shadow-card border border-ink-100">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-xs font-semibold text-ink-500 uppercase tracking-wider">Expense · July</div>
+              <div class="w-7 h-7 rounded-lg bg-danger-50 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B91C1C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+              </div>
+            </div>
+            <div class="num text-3xl font-bold text-ink-900">₹87,450</div>
+            <div class="flex items-center gap-1.5 mt-2 text-xs">
+              <span class="text-ink-500">of</span>
+              <span class="num font-semibold text-ink-700">₹1,20,000</span>
+              <span class="text-ink-500">budget</span>
+              <span class="ml-auto inline-flex items-center gap-0.5 text-success-700 font-semibold">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                73%
+              </span>
+            </div>
+          </div>
+
+          <!-- Savings rate -->
+          <div class="bg-white rounded-2xl p-5 shadow-card border border-ink-100">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-xs font-semibold text-ink-500 uppercase tracking-wider">Savings Rate</div>
+              <div class="w-7 h-7 rounded-lg bg-terra-50 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              </div>
+            </div>
+            <div class="num text-3xl font-bold text-terra-700">52.7<span class="text-xl text-ink-500">%</span></div>
+            <div class="text-xs text-ink-500 mt-2">Excellent &nbsp;·&nbsp; target 30%</div>
+          </div>
+        </section>
+
+        <!-- CHARTS ROW 1: Donut + Cash flow -->
+        <section class="grid grid-cols-5 gap-4">
+          <div class="col-span-2 bg-white rounded-2xl p-6 shadow-card border border-ink-100">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h2 class="font-bold text-ink-900">Spending by category</h2>
+                <p class="text-xs text-ink-500 mt-0.5">July 2026</p>
+              </div>
+              <button class="text-xs text-ink-500 hover:text-ink-900 font-medium inline-flex items-center gap-1">
+                This month
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+            </div>
+            <div id="donut-chart" style="height: 240px;"></div>
+            <div class="mt-3 pt-3 border-t border-ink-100 flex items-center justify-between">
+              <div class="text-xs text-ink-500">Top: <span class="font-semibold text-ink-900">Groceries</span> · ₹18,200</div>
+              <a class="text-xs text-terra-700 font-semibold hover:text-terra-800">View all →</a>
+            </div>
+          </div>
+
+          <div class="col-span-3 bg-white rounded-2xl p-6 shadow-card border border-ink-100">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h2 class="font-bold text-ink-900">Cash flow trend</h2>
+                <p class="text-xs text-ink-500 mt-0.5">Last 6 months · income vs expense</p>
+              </div>
+              <div class="flex items-center gap-1.5 text-xs">
+                <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-terra-700"></span><span class="text-ink-700 font-medium">Income</span></span>
+                <span class="inline-flex items-center gap-1.5 ml-3"><span class="w-2.5 h-2.5 rounded-sm bg-ink-300"></span><span class="text-ink-700 font-medium">Expense</span></span>
+              </div>
+            </div>
+            <div id="line-chart" style="height: 240px;"></div>
+          </div>
+        </section>
+
+        <!-- CHARTS ROW 2: Top categories + Recent + Accounts -->
+        <section class="grid grid-cols-3 gap-4">
+
+          <!-- Top categories bar -->
+          <div class="bg-white rounded-2xl p-6 shadow-card border border-ink-100">
+            <div class="flex items-center justify-between mb-5">
+              <h2 class="font-bold text-ink-900">Top categories</h2>
+              <span class="text-xs text-ink-500">July</span>
+            </div>
+            <div class="space-y-3.5">
+              <div>
+                <div class="flex items-center justify-between text-sm mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-terra-700"></span>
+                    <span class="font-medium text-ink-900">Groceries</span>
+                  </div>
+                  <span class="num font-semibold text-ink-900">₹18,200</span>
+                </div>
+                <div class="h-1.5 bg-cream-200 rounded-full overflow-hidden"><div class="h-full bg-terra-700 rounded-full" style="width: 100%"></div></div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between text-sm mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-warn-600"></span>
+                    <span class="font-medium text-ink-900">Dining</span>
+                  </div>
+                  <span class="num font-semibold text-ink-900">₹12,400</span>
+                </div>
+                <div class="h-1.5 bg-cream-200 rounded-full overflow-hidden"><div class="h-full bg-warn-600 rounded-full" style="width: 68%"></div></div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between text-sm mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-ink-500"></span>
+                    <span class="font-medium text-ink-900">Fuel</span>
+                  </div>
+                  <span class="num font-semibold text-ink-900">₹8,900</span>
+                </div>
+                <div class="h-1.5 bg-cream-200 rounded-full overflow-hidden"><div class="h-full bg-ink-500 rounded-full" style="width: 49%"></div></div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between text-sm mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-sage-500"></span>
+                    <span class="font-medium text-ink-900">Utilities</span>
+                  </div>
+                  <span class="num font-semibold text-ink-900">₹6,200</span>
+                </div>
+                <div class="h-1.5 bg-cream-200 rounded-full overflow-hidden"><div class="h-full bg-sage-500 rounded-full" style="width: 34%"></div></div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between text-sm mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-rose-600"></span>
+                    <span class="font-medium text-ink-900">Shopping</span>
+                  </div>
+                  <span class="num font-semibold text-ink-900">₹5,400</span>
+                </div>
+                <div class="h-1.5 bg-cream-200 rounded-full overflow-hidden"><div class="h-full bg-rose-600 rounded-full" style="width: 30%"></div></div>
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-ink-100 text-xs text-ink-500 text-center">+ 8 more categories</div>
+          </div>
+
+          <!-- Recent transactions -->
+          <div class="bg-white rounded-2xl p-6 shadow-card border border-ink-100">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="font-bold text-ink-900">Recent</h2>
+              <a class="text-xs text-terra-700 font-semibold hover:text-terra-800">View all →</a>
+            </div>
+            <div class="space-y-2.5">
+              <!-- txn row template -->
+              <div class="row-hover -mx-2 px-2 py-1.5 rounded-lg flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-terra-50 flex items-center justify-center flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h18"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-ink-900 truncate">Swiggy dinner</div>
+                  <div class="text-[11px] text-ink-500 flex items-center gap-1.5">
+                    <span>Dining</span><span>·</span><span>HDFC CC</span>
+                  </div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <div class="num text-sm font-semibold text-ink-900">−₹450</div>
+                  <div class="flex items-center gap-1 justify-end mt-0.5">
+                    <div class="avatar w-4 h-4 rounded-full bg-terra-700 text-[9px]">V</div>
+                    <span class="text-[10px] text-ink-500">Vimal</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row-hover -mx-2 px-2 py-1.5 rounded-lg flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-sage-500/10 flex items-center justify-center flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4D7C5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-ink-900 truncate">BigBasket order</div>
+                  <div class="text-[11px] text-ink-500 flex items-center gap-1.5">
+                    <span>Groceries</span><span>·</span><span>HDFC Savings</span>
+                  </div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <div class="num text-sm font-semibold text-ink-900">−₹2,340</div>
+                  <div class="flex items-center gap-1 justify-end mt-0.5">
+                    <div class="avatar w-4 h-4 rounded-full bg-warn-700 text-[9px]">P</div>
+                    <span class="text-[10px] text-ink-500">Pavithra</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row-hover -mx-2 px-2 py-1.5 rounded-lg flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-ink-100 flex items-center justify-center flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#44403C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 22h-5L7 14h10Z"/><circle cx="17" cy="11" r="3"/><circle cx="7" cy="11" r="3"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-ink-900 truncate">Petrol · HP Pump</div>
+                  <div class="text-[11px] text-ink-500 flex items-center gap-1.5">
+                    <span>Fuel</span><span>·</span><span>ICICI CC</span>
+                  </div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <div class="num text-sm font-semibold text-ink-900">−₹1,200</div>
+                  <div class="flex items-center gap-1 justify-end mt-0.5">
+                    <div class="avatar w-4 h-4 rounded-full bg-terra-700 text-[9px]">V</div>
+                    <span class="text-[10px] text-ink-500">Vimal</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row-hover -mx-2 px-2 py-1.5 rounded-lg flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-violet-600/10 flex items-center justify-center flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6D28D9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-ink-900 truncate">Netflix monthly</div>
+                  <div class="text-[11px] text-ink-500 flex items-center gap-1.5">
+                    <span>Entertainment</span><span>·</span><span>ICICI CC</span>
+                  </div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <div class="num text-sm font-semibold text-ink-900">−₹649</div>
+                  <div class="flex items-center gap-1 justify-end mt-0.5">
+                    <div class="flex -space-x-1.5">
+                      <div class="avatar w-4 h-4 rounded-full bg-terra-700 text-[9px] border border-white">V</div>
+                      <div class="avatar w-4 h-4 rounded-full bg-warn-700 text-[9px] border border-white">P</div>
+                    </div>
+                    <span class="text-[10px] text-ink-500">Joint</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row-hover -mx-2 px-2 py-1.5 rounded-lg flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-success-50 flex items-center justify-center flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-ink-900 truncate">Salary · July</div>
+                  <div class="text-[11px] text-ink-500 flex items-center gap-1.5">
+                    <span>Salary</span><span>·</span><span>HDFC Savings</span>
+                  </div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <div class="num text-sm font-semibold text-success-700">+₹92,500</div>
+                  <div class="flex items-center gap-1 justify-end mt-0.5">
+                    <div class="avatar w-4 h-4 rounded-full bg-terra-700 text-[9px]">V</div>
+                    <span class="text-[10px] text-ink-500">Vimal</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accounts -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <h2 class="font-bold text-ink-900">Accounts</h2>
+              <a class="text-xs text-terra-700 font-semibold hover:text-terra-800">All →</a>
+            </div>
+
+            <div class="bg-gradient-to-br from-terra-700 to-terra-800 text-white rounded-2xl p-5 shadow-card">
+              <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><path d="M4 10v11"/><path d="M20 10v11"/><path d="M8 14v3"/><path d="M12 14v3"/><path d="M16 14v3"/></svg>
+                  </div>
+                  <div>
+                    <div class="text-sm font-semibold">HDFC Savings</div>
+                    <div class="text-[11px] opacity-80">Bank · ••4291</div>
+                  </div>
+                </div>
+                <span class="text-[10px] font-semibold bg-white/20 px-2 py-0.5 rounded-full uppercase tracking-wider">Primary</span>
+              </div>
+              <div class="num text-2xl font-bold">₹1,85,400</div>
+              <div class="text-[11px] opacity-80 mt-1">Available balance</div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-5 shadow-card border border-ink-100">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-lg bg-warn-50 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                  </div>
+                  <div>
+                    <div class="text-sm font-semibold text-ink-900">ICICI Amazon Pay CC</div>
+                    <div class="text-[11px] text-ink-500">Credit · ••7842</div>
+                  </div>
+                </div>
+              </div>
+              <div class="num text-2xl font-bold text-ink-900">−₹18,450</div>
+              <div class="mt-3">
+                <div class="flex items-center justify-between text-[11px] text-ink-500 mb-1">
+                  <span>Used</span>
+                  <span>of ₹1,00,000</span>
+                </div>
+                <div class="h-1.5 bg-cream-200 rounded-full overflow-hidden"><div class="h-full bg-warn-600 rounded-full" style="width: 18.5%"></div></div>
+                <div class="text-[11px] text-ink-500 mt-1.5">Due <span class="font-semibold text-ink-700">Aug 5</span> · ₹18,450</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-white rounded-2xl p-4 shadow-card border border-ink-100">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <div class="w-6 h-6 rounded bg-sage-500/10 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4D7C5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01"/><path d="M18 12h.01"/></svg>
+                  </div>
+                  <span class="text-[11px] font-semibold text-ink-700">Cash</span>
+                </div>
+                <div class="num text-lg font-bold text-ink-900">₹3,200</div>
+              </div>
+              <div class="bg-white rounded-2xl p-4 shadow-card border border-ink-100">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <div class="w-6 h-6 rounded bg-violet-600/10 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6D28D9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                  </div>
+                  <span class="text-[11px] font-semibold text-ink-700">Paytm</span>
+                </div>
+                <div class="num text-lg font-bold text-ink-900">₹1,850</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================== -->
+        <!-- TRANSACTIONS LIST VIEW                                -->
+        <!-- ===================================================== -->
+        <section class="bg-white rounded-2xl shadow-card border border-ink-100 overflow-hidden">
+          <div class="px-6 py-5 border-b border-ink-100 flex items-center justify-between">
+            <div>
+              <h2 class="font-bold text-ink-900">Transactions</h2>
+              <p class="text-xs text-ink-500 mt-0.5">142 this month · ₹87,450 spent</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="text-xs font-semibold text-ink-700 hover:text-ink-900 border border-ink-200 rounded-lg px-3 py-1.5 inline-flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export
+              </button>
+              <button class="text-xs font-semibold text-white bg-terra-700 hover:bg-terra-800 rounded-lg px-3 py-1.5 inline-flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add
+              </button>
+            </div>
+          </div>
+
+          <!-- Filters -->
+          <div class="px-6 py-3 border-b border-ink-100 bg-cream-50 flex items-center gap-2 flex-wrap">
+            <button class="chip active text-xs font-semibold border border-ink-200 rounded-lg px-3 py-1.5 bg-white">July 2026</button>
+            <button class="chip text-xs font-medium text-ink-700 border border-ink-200 rounded-lg px-3 py-1.5 bg-white">All categories</button>
+            <button class="chip text-xs font-medium text-ink-700 border border-ink-200 rounded-lg px-3 py-1.5 bg-white">All accounts</button>
+            <button class="chip text-xs font-medium text-ink-700 border border-ink-200 rounded-lg px-3 py-1.5 bg-white">Spent by anyone</button>
+            <div class="flex-1"></div>
+            <div class="relative">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" placeholder="Search…" class="w-48 pl-8 pr-3 py-1.5 text-xs bg-white border border-ink-200 rounded-lg focus:outline-none focus:border-terra-700 placeholder:text-ink-400" />
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="divide-y divide-ink-100">
+            <!-- Header -->
+            <div class="px-6 py-2.5 bg-cream-50 grid grid-cols-12 gap-3 text-[10px] font-semibold text-ink-500 uppercase tracking-wider">
+              <div class="col-span-2">Date</div>
+              <div class="col-span-4">Description</div>
+              <div class="col-span-2">Category</div>
+              <div class="col-span-2">Account</div>
+              <div class="col-span-1">Spent by</div>
+              <div class="col-span-1 text-right">Amount</div>
+            </div>
+
+            <!-- Day group: Today -->
+            <div class="px-6 py-1.5 bg-cream-100/60 text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Today</div>
+            <div class="row-hover px-6 py-3 grid grid-cols-12 gap-3 items-center text-sm">
+              <div class="col-span-2 text-ink-500 num">28 Jul</div>
+              <div class="col-span-4 font-medium text-ink-900">Swiggy dinner</div>
+              <div class="col-span-2"><span class="inline-flex items-center gap-1.5 text-xs text-ink-700"><span class="w-1.5 h-1.5 rounded-full bg-warn-600"></span>Dining</span></div>
+              <div class="col-span-2 text-ink-700 text-xs">HDFC CC</div>
+              <div class="col-span-1"><div class="avatar w-5 h-5 rounded-full bg-terra-700 text-[10px]">V</div></div>
+              <div class="col-span-1 text-right num font-semibold text-ink-900">−₹450</div>
+            </div>
+            <div class="row-hover px-6 py-3 grid grid-cols-12 gap-3 items-center text-sm">
+              <div class="col-span-2 text-ink-500 num">28 Jul</div>
+              <div class="col-span-4 font-medium text-ink-900">Petrol · HP Pump</div>
+              <div class="col-span-2"><span class="inline-flex items-center gap-1.5 text-xs text-ink-700"><span class="w-1.5 h-1.5 rounded-full bg-ink-500"></span>Fuel</span></div>
+              <div class="col-span-2 text-ink-700 text-xs">ICICI CC</div>
+              <div class="col-span-1"><div class="avatar w-5 h-5 rounded-full bg-terra-700 text-[10px]">V</div></div>
+              <div class="col-span-1 text-right num font-semibold text-ink-900">−₹1,200</div>
+            </div>
+
+            <div class="px-6 py-1.5 bg-cream-100/60 text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Yesterday</div>
+            <div class="row-hover px-6 py-3 grid grid-cols-12 gap-3 items-center text-sm">
+              <div class="col-span-2 text-ink-500 num">27 Jul</div>
+              <div class="col-span-4 font-medium text-ink-900">BigBasket weekly</div>
+              <div class="col-span-2"><span class="inline-flex items-center gap-1.5 text-xs text-ink-700"><span class="w-1.5 h-1.5 rounded-full bg-terra-700"></span>Groceries</span></div>
+              <div class="col-span-2 text-ink-700 text-xs">HDFC Savings</div>
+              <div class="col-span-1"><div class="avatar w-5 h-5 rounded-full bg-warn-700 text-[10px]">P</div></div>
+              <div class="col-span-1 text-right num font-semibold text-ink-900">−₹2,340</div>
+            </div>
+            <div class="row-hover px-6 py-3 grid grid-cols-12 gap-3 items-center text-sm">
+              <div class="col-span-2 text-ink-500 num">27 Jul</div>
+              <div class="col-span-4 font-medium text-ink-900">Airtel postpaid</div>
+              <div class="col-span-2"><span class="inline-flex items-center gap-1.5 text-xs text-ink-700"><span class="w-1.5 h-1.5 rounded-full bg-sage-500"></span>Utilities</span></div>
+              <div class="col-span-2 text-ink-700 text-xs">HDFC Savings</div>
+              <div class="col-span-1"><div class="flex -space-x-1"><div class="avatar w-5 h-5 rounded-full bg-terra-700 text-[10px] border border-white">V</div><div class="avatar w-5 h-5 rounded-full bg-warn-700 text-[10px] border border-white">P</div></div></div>
+              <div class="col-span-1 text-right num font-semibold text-ink-900">−₹399</div>
+            </div>
+            <div class="row-hover px-6 py-3 grid grid-cols-12 gap-3 items-center text-sm">
+              <div class="col-span-2 text-ink-500 num">27 Jul</div>
+              <div class="col-span-4 font-medium text-ink-900">Transfer to Pavithra</div>
+              <div class="col-span-2"><span class="inline-flex items-center gap-1.5 text-xs text-ink-700"><span class="w-1.5 h-1.5 rounded-full bg-warn-700"></span>Transfer</span></div>
+              <div class="col-span-2 text-ink-700 text-xs">HDFC → Paytm</div>
+              <div class="col-span-1"><div class="avatar w-5 h-5 rounded-full bg-terra-700 text-[10px]">V</div></div>
+              <div class="col-span-1 text-right num font-semibold text-warn-700">₹5,000</div>
+            </div>
+
+            <div class="px-6 py-1.5 bg-cream-100/60 text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Last week</div>
+            <div class="row-hover px-6 py-3 grid grid-cols-12 gap-3 items-center text-sm">
+              <div class="col-span-2 text-ink-500 num">26 Jul</div>
+              <div class="col-span-4 font-medium text-ink-900">Salary · July</div>
+              <div class="col-span-2"><span class="inline-flex items-center gap-1.5 text-xs text-ink-700"><span class="w-1.5 h-1.5 rounded-full bg-success-700"></span>Salary</span></div>
+              <div class="col-span-2 text-ink-700 text-xs">HDFC Savings</div>
+              <div class="col-span-1"><div class="avatar w-5 h-5 rounded-full bg-terra-700 text-[10px]">V</div></div>
+              <div class="col-span-1 text-right num font-semibold text-success-700">+₹92,500</div>
+            </div>
+            <div class="row-hover px-6 py-3 grid grid-cols-12 gap-3 items-center text-sm">
+              <div class="col-span-2 text-ink-500 num">25 Jul</div>
+              <div class="col-span-4 font-medium text-ink-900">Zomato</div>
+              <div class="col-span-2"><span class="inline-flex items-center gap-1.5 text-xs text-ink-700"><span class="w-1.5 h-1.5 rounded-full bg-warn-600"></span>Dining</span></div>
+              <div class="col-span-2 text-ink-700 text-xs">Paytm</div>
+              <div class="col-span-1"><div class="avatar w-5 h-5 rounded-full bg-warn-700 text-[10px]">P</div></div>
+              <div class="col-span-1 text-right num font-semibold text-ink-900">−₹780</div>
+            </div>
+            <div class="row-hover px-6 py-3 grid grid-cols-12 gap-3 items-center text-sm">
+              <div class="col-span-2 text-ink-500 num">24 Jul</div>
+              <div class="col-span-4 font-medium text-ink-900">Apollo Pharmacy</div>
+              <div class="col-span-2"><span class="inline-flex items-center gap-1.5 text-xs text-ink-700"><span class="w-1.5 h-1.5 rounded-full bg-teal-600"></span>Health</span></div>
+              <div class="col-span-2 text-ink-700 text-xs">Cash</div>
+              <div class="col-span-1"><div class="avatar w-5 h-5 rounded-full bg-warn-700 text-[10px]">P</div></div>
+              <div class="col-span-1 text-right num font-semibold text-ink-900">−₹340</div>
+            </div>
+            <div class="row-hover px-6 py-3 grid grid-cols-12 gap-3 items-center text-sm">
+              <div class="col-span-2 text-ink-500 num">23 Jul</div>
+              <div class="col-span-4 font-medium text-ink-900">Amazon · earphones</div>
+              <div class="col-span-2"><span class="inline-flex items-center gap-1.5 text-xs text-ink-700"><span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span>Shopping</span></div>
+              <div class="col-span-2 text-ink-700 text-xs">ICICI CC</div>
+              <div class="col-span-1"><div class="avatar w-5 h-5 rounded-full bg-terra-700 text-[10px]">V</div></div>
+              <div class="col-span-1 text-right num font-semibold text-ink-900">−₹1,499</div>
+            </div>
+          </div>
+
+          <div class="px-6 py-3 border-t border-ink-100 flex items-center justify-between text-xs">
+            <span class="text-ink-500">Showing 9 of 142</span>
+            <button class="text-terra-700 font-semibold hover:text-terra-800">Load more →</button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- MOBILE PREVIEW                                                 -->
+  <!-- ============================================================= -->
+  <div class="bg-cream-200 border-y border-ink-200 mt-12 py-12">
+    <div class="max-w-6xl mx-auto px-8">
+      <div class="text-center mb-8">
+        <h2 class="text-2xl font-bold text-ink-900">Mobile preview</h2>
+        <p class="text-sm text-ink-500 mt-1">390px · how it looks on your phone</p>
+      </div>
+
+      <div class="flex items-start justify-center gap-12 flex-wrap">
+
+        <!-- Phone 1: Dashboard -->
+        <div>
+          <div class="text-xs text-ink-500 font-semibold text-center mb-3 uppercase tracking-wider">Dashboard</div>
+          <div class="phone-frame w-[390px] h-[780px] bg-cream-100 overflow-hidden relative">
+            <div class="h-full overflow-y-auto scroll-hidden">
+              <!-- status bar -->
+              <div class="bg-cream-100 px-6 pt-3 pb-1 flex items-center justify-between text-[11px] font-semibold text-ink-900">
+                <span>9:41</span>
+                <div class="flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21l-1.5-1.5C5 14 2 11 2 7.5 2 4.5 4.5 2 7.5 2c1.5 0 3 .5 4.5 2 1.5-1.5 3-2 4.5-2C19.5 2 22 4.5 22 7.5c0 3.5-3 6.5-8.5 12L12 21z"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M2 22h20V10L12 2 2 10v12zm2-2V11l8-6 8 6v9H4z"/></svg>
+                </div>
+              </div>
+              <!-- header -->
+              <div class="px-5 pt-3 pb-2 flex items-center justify-between">
+                <div>
+                  <div class="text-[10px] text-ink-500 font-medium uppercase tracking-wider">July 2026</div>
+                  <h1 class="text-lg font-bold text-ink-900 leading-tight">Good evening, Vimal</h1>
+                </div>
+                <div class="avatar w-9 h-9 rounded-full bg-terra-700 text-sm">V</div>
+              </div>
+
+              <!-- hero stat 1: net worth -->
+              <div class="mx-5 mt-3 bg-gradient-to-br from-terra-700 to-terra-800 text-white rounded-2xl p-5">
+                <div class="text-[10px] font-semibold opacity-80 uppercase tracking-wider">Net Worth</div>
+                <div class="num text-3xl font-bold mt-1">₹4,12,300</div>
+                <div class="text-[11px] opacity-80 mt-1.5">+₹9,820 this month</div>
+              </div>
+
+              <!-- 3 stats grid -->
+              <div class="grid grid-cols-3 gap-2 px-5 mt-3">
+                <div class="bg-white rounded-xl p-3 border border-ink-100">
+                  <div class="text-[9px] font-semibold text-ink-500 uppercase tracking-wider">Income</div>
+                  <div class="num text-sm font-bold text-ink-900 mt-0.5">₹1.85L</div>
+                </div>
+                <div class="bg-white rounded-xl p-3 border border-ink-100">
+                  <div class="text-[9px] font-semibold text-ink-500 uppercase tracking-wider">Spent</div>
+                  <div class="num text-sm font-bold text-ink-900 mt-0.5">₹87.4K</div>
+                </div>
+                <div class="bg-white rounded-xl p-3 border border-ink-100">
+                  <div class="text-[9px] font-semibold text-ink-500 uppercase tracking-wider">Saved</div>
+                  <div class="num text-sm font-bold text-terra-700 mt-0.5">52.7%</div>
+                </div>
+              </div>
+
+              <!-- chart -->
+              <div class="mx-5 mt-3 bg-white rounded-2xl p-4 border border-ink-100">
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-sm font-bold text-ink-900">Spending</h3>
+                  <span class="text-[10px] text-ink-500">July</span>
+                </div>
+                <div id="mobile-donut" style="height: 140px;"></div>
+              </div>
+
+              <!-- recent -->
+              <div class="mx-5 mt-3 mb-24">
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-sm font-bold text-ink-900">Recent</h3>
+                  <a class="text-[11px] text-terra-700 font-semibold">All</a>
+                </div>
+                <div class="bg-white rounded-2xl border border-ink-100 divide-y divide-ink-100">
+                  <div class="flex items-center gap-3 px-4 py-3">
+                    <div class="w-9 h-9 rounded-lg bg-warn-600/10 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h18"/></svg></div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-medium text-ink-900 truncate">Swiggy</div>
+                      <div class="text-[10px] text-ink-500">Dining · Vimal</div>
+                    </div>
+                    <div class="num text-sm font-semibold text-ink-900">−₹450</div>
+                  </div>
+                  <div class="flex items-center gap-3 px-4 py-3">
+                    <div class="w-9 h-9 rounded-lg bg-sage-500/10 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4D7C5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-medium text-ink-900 truncate">BigBasket</div>
+                      <div class="text-[10px] text-ink-500">Groceries · Pavithra</div>
+                    </div>
+                    <div class="num text-sm font-semibold text-ink-900">−₹2,340</div>
+                  </div>
+                  <div class="flex items-center gap-3 px-4 py-3">
+                    <div class="w-9 h-9 rounded-lg bg-success-50 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-medium text-ink-900 truncate">Salary</div>
+                      <div class="text-[10px] text-ink-500">Salary · Vimal</div>
+                    </div>
+                    <div class="num text-sm font-semibold text-success-700">+₹92,500</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- FAB -->
+            <button class="absolute bottom-24 right-5 w-14 h-14 rounded-2xl bg-terra-700 text-white shadow-lift flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <!-- Bottom nav -->
+            <div class="absolute bottom-0 left-0 right-0 bg-cream-50 border-t border-ink-200 px-2 pt-1.5 pb-5 flex items-center justify-around">
+              <button class="flex flex-col items-center gap-0.5 px-3 py-1 text-terra-700">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+                <span class="text-[10px] font-semibold">Home</span>
+              </button>
+              <button class="flex flex-col items-center gap-0.5 px-3 py-1 text-ink-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/></svg>
+                <span class="text-[10px] font-medium">Txns</span>
+              </button>
+              <div class="w-12"></div>
+              <button class="flex flex-col items-center gap-0.5 px-3 py-1 text-ink-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                <span class="text-[10px] font-medium">Cards</span>
+              </button>
+              <button class="flex flex-col items-center gap-0.5 px-3 py-1 text-ink-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span class="text-[10px] font-medium">More</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phone 2: Quick add modal -->
+        <div>
+          <div class="text-xs text-ink-500 font-semibold text-center mb-3 uppercase tracking-wider">Quick add modal</div>
+          <div class="phone-frame w-[390px] h-[780px] bg-cream-100 overflow-hidden relative">
+            <div class="modal-backdrop absolute inset-0 z-10"></div>
+            <div class="absolute inset-x-0 bottom-0 top-12 z-20 bg-cream-100 rounded-t-3xl shadow-lift flex flex-col">
+              <!-- drag handle -->
+              <div class="flex justify-center pt-2.5 pb-1">
+                <div class="w-10 h-1 rounded-full bg-ink-300"></div>
+              </div>
+              <!-- type toggle -->
+              <div class="px-5 pt-1 pb-3 flex items-center gap-1.5 bg-cream-100">
+                <div class="flex bg-cream-200 rounded-xl p-1 flex-1">
+                  <button class="flex-1 py-2 text-sm font-semibold bg-white text-ink-900 rounded-lg shadow-soft">Expense</button>
+                  <button class="flex-1 py-2 text-sm font-medium text-ink-500">Income</button>
+                  <button class="flex-1 py-2 text-sm font-medium text-ink-500">Transfer</button>
+                </div>
+                <button class="p-2 text-ink-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <!-- amount display -->
+              <div class="px-5 pt-2 pb-4 text-center border-b border-ink-100">
+                <div class="text-[11px] text-ink-500 uppercase tracking-wider font-semibold">Amount</div>
+                <div class="num text-5xl font-bold text-terra-700 mt-1">₹2,340</div>
+                <div class="text-[11px] text-ink-500 mt-1">≈ $28 USD</div>
+              </div>
+              <!-- form fields -->
+              <div class="flex-1 overflow-y-auto px-5 py-4 space-y-3.5">
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="bg-white border border-ink-200 rounded-xl px-3 py-2.5">
+                    <div class="text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Date</div>
+                    <div class="text-sm font-medium text-ink-900 mt-0.5">Today · 28 Jul</div>
+                  </div>
+                  <div class="bg-white border border-ink-200 rounded-xl px-3 py-2.5">
+                    <div class="text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Account</div>
+                    <div class="text-sm font-medium text-ink-900 mt-0.5">HDFC Savings</div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="text-[10px] font-semibold text-ink-500 uppercase tracking-wider mb-1.5">Category</div>
+                  <div class="grid grid-cols-4 gap-2">
+                    <button class="bg-terra-50 border-2 border-terra-700 rounded-xl p-2 flex flex-col items-center gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                      <span class="text-[10px] font-semibold text-terra-700">Groceries</span>
+                    </button>
+                    <button class="bg-white border border-ink-200 rounded-xl p-2 flex flex-col items-center gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#44403C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h18"/></svg>
+                      <span class="text-[10px] font-medium text-ink-700">Dining</span>
+                    </button>
+                    <button class="bg-white border border-ink-200 rounded-xl p-2 flex flex-col items-center gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#44403C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 22h-5L7 14h10Z"/><circle cx="17" cy="11" r="3"/><circle cx="7" cy="11" r="3"/></svg>
+                      <span class="text-[10px] font-medium text-ink-700">Fuel</span>
+                    </button>
+                    <button class="bg-white border border-ink-200 rounded-xl p-2 flex flex-col items-center gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#44403C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                      <span class="text-[10px] font-medium text-ink-700">More</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="text-[10px] font-semibold text-ink-500 uppercase tracking-wider mb-1.5">Spent by</div>
+                  <div class="flex bg-cream-200 rounded-xl p-1">
+                    <button class="flex-1 py-2 text-sm font-semibold bg-white text-ink-900 rounded-lg shadow-soft inline-flex items-center justify-center gap-1.5">
+                      <div class="avatar w-5 h-5 rounded-full bg-terra-700 text-[10px]">V</div>Vimal
+                    </button>
+                    <button class="flex-1 py-2 text-sm font-medium text-ink-500 inline-flex items-center justify-center gap-1.5">
+                      <div class="avatar w-5 h-5 rounded-full bg-warn-700 text-[10px]">P</div>Pavithra
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="text-[10px] font-semibold text-ink-500 uppercase tracking-wider mb-1.5">Description</div>
+                  <input type="text" value="BigBasket weekly" class="w-full bg-white border border-ink-200 rounded-xl px-3 py-2.5 text-sm text-ink-900 focus:outline-none focus:border-terra-700" />
+                </div>
+              </div>
+
+              <!-- numeric pad -->
+              <div class="bg-white border-t border-ink-200 px-3 py-3 pb-6">
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                  <button class="num-key num h-14 rounded-xl bg-cream-100 text-2xl font-semibold text-ink-900">1</button>
+                  <button class="num-key num h-14 rounded-xl bg-cream-100 text-2xl font-semibold text-ink-900">2</button>
+                  <button class="num-key num h-14 rounded-xl bg-cream-100 text-2xl font-semibold text-ink-900">3</button>
+                  <button class="num-key num h-14 rounded-xl bg-cream-100 text-2xl font-semibold text-ink-900">4</button>
+                  <button class="num-key num h-14 rounded-xl bg-cream-100 text-2xl font-semibold text-ink-900">5</button>
+                  <button class="num-key num h-14 rounded-xl bg-cream-100 text-2xl font-semibold text-ink-900">6</button>
+                  <button class="num-key num h-14 rounded-xl bg-cream-100 text-2xl font-semibold text-ink-900">7</button>
+                  <button class="num-key num h-14 rounded-xl bg-cream-100 text-2xl font-semibold text-ink-900">8</button>
+                  <button class="num-key num h-14 rounded-xl bg-cream-100 text-2xl font-semibold text-ink-900">9</button>
+                  <button class="num-key num h-14 rounded-xl bg-cream-100 text-2xl font-semibold text-ink-900">.</button>
+                  <button class="num-key num h-14 rounded-xl bg-cream-100 text-2xl font-semibold text-ink-900">0</button>
+                  <button class="num-key h-14 rounded-xl bg-cream-100 text-ink-700 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H7c-.69 0-1.23.35-1.59.88L0 12l5.41 8.11c.36.53.9.89 1.59.89h15a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
+                  </button>
+                </div>
+                <button class="w-full bg-terra-700 text-white py-3.5 rounded-xl font-semibold text-base">Save expense</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- FOOTER NOTES                                                    -->
+  <!-- ============================================================= -->
+  <div class="bg-ink-900 text-cream-200 py-10 px-8">
+    <div class="max-w-4xl mx-auto">
+      <h3 class="text-cream-50 font-bold mb-2">Sprint 0 — what's in this mockup</h3>
+      <p class="text-sm text-cream-200/80 mb-6">This is a static design reference. Nothing is wired up — it's here to lock the visual direction before we build the real app.</p>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm">
+        <div>
+          <div class="text-cream-50 font-semibold mb-1.5">Includes</div>
+          <ul class="space-y-1 text-cream-200/80 text-xs">
+            <li>· Dashboard (desktop)</li>
+            <li>· Dashboard (mobile)</li>
+            <li>· Quick add modal (mobile)</li>
+            <li>· Transactions list</li>
+          </ul>
+        </div>
+        <div>
+          <div class="text-cream-50 font-semibold mb-1.5">Palette</div>
+          <div class="flex items-center gap-1.5 mb-1.5">
+            <div class="w-5 h-5 rounded bg-cream-100 border border-ink-700"></div>
+            <span class="text-xs">Cream #FAF7F2</span>
+          </div>
+          <div class="flex items-center gap-1.5 mb-1.5">
+            <div class="w-5 h-5 rounded bg-ink-900 border border-ink-700"></div>
+            <span class="text-xs">Ink #1C1917</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <div class="w-5 h-5 rounded bg-terra-700"></div>
+            <span class="text-xs">Terracotta #C2410C</span>
+          </div>
+        </div>
+        <div>
+          <div class="text-cream-50 font-semibold mb-1.5">Locked decisions</div>
+          <ul class="space-y-1 text-cream-200/80 text-xs">
+            <li>· App name: <span class="text-cream-50 font-medium">VaravuSelavu</span></li>
+            <li>· Mobile nav: 4 tabs (Home, Txns, Cards, More)</li>
+            <li>· Default user: last used</li>
+            <li>· Charts: as designed for v1</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- QUICK ADD MODAL (Desktop)                                       -->
+  <!-- ============================================================= -->
+  <div id="quick-add-modal" class="fixed inset-0 z-50 hidden">
+    <div class="modal-backdrop absolute inset-0"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-cream-100 rounded-3xl shadow-lift w-full max-w-md overflow-hidden fade-in">
+        <!-- Header -->
+        <div class="px-6 pt-5 pb-3 flex items-center justify-between">
+          <h2 class="text-lg font-bold text-ink-900">Quick add</h2>
+          <button id="close-quick-add" class="p-1 text-ink-500 hover:text-ink-900 hover:bg-cream-200 rounded-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <!-- Type toggle -->
+        <div class="px-6">
+          <div class="flex bg-cream-200 rounded-xl p-1">
+            <button class="flex-1 py-2 text-sm font-semibold bg-white text-ink-900 rounded-lg shadow-soft">Expense</button>
+            <button class="flex-1 py-2 text-sm font-medium text-ink-500">Income</button>
+            <button class="flex-1 py-2 text-sm font-medium text-ink-500">Transfer</button>
+          </div>
+        </div>
+        <!-- Amount -->
+        <div class="px-6 pt-5 pb-4 text-center">
+          <div class="text-[11px] text-ink-500 uppercase tracking-wider font-semibold">Amount</div>
+          <div class="num text-5xl font-bold text-terra-700 mt-1">₹0</div>
+        </div>
+        <!-- Form fields -->
+        <div class="px-6 pb-5 space-y-2.5">
+          <div class="grid grid-cols-2 gap-2.5">
+            <div class="bg-white border border-ink-200 rounded-xl px-3 py-2.5">
+              <div class="text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Date</div>
+              <div class="text-sm font-medium text-ink-900 mt-0.5">Today</div>
+            </div>
+            <div class="bg-white border border-ink-200 rounded-xl px-3 py-2.5">
+              <div class="text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Account</div>
+              <div class="text-sm font-medium text-ink-900 mt-0.5">HDFC Savings</div>
+            </div>
+          </div>
+          <div class="bg-white border border-ink-200 rounded-xl px-3 py-2.5">
+            <div class="text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Category</div>
+            <div class="text-sm font-medium text-ink-900 mt-0.5">Select category…</div>
+          </div>
+          <div class="bg-cream-200 rounded-xl p-1 flex">
+            <button class="flex-1 py-1.5 text-xs font-semibold bg-white text-ink-900 rounded-lg inline-flex items-center justify-center gap-1.5">
+              <div class="avatar w-4 h-4 rounded-full bg-terra-700 text-[9px]">V</div>Vimal
+            </button>
+            <button class="flex-1 py-1.5 text-xs font-medium text-ink-500 inline-flex items-center justify-center gap-1.5">
+              <div class="avatar w-4 h-4 rounded-full bg-warn-700 text-[9px]">P</div>Pavithra
+            </button>
+          </div>
+          <input type="text" placeholder="Description (optional)" class="w-full bg-white border border-ink-200 rounded-xl px-3 py-2.5 text-sm placeholder:text-ink-400 focus:outline-none focus:border-terra-700" />
+        </div>
+        <!-- Action -->
+        <div class="bg-white border-t border-ink-200 px-6 py-3 flex items-center gap-2">
+          <button id="close-quick-add-2" class="flex-1 py-2.5 rounded-xl text-sm font-semibold text-ink-700 hover:bg-cream-100">Cancel</button>
+          <button class="flex-[2] py-2.5 rounded-xl text-sm font-semibold text-white bg-terra-700 hover:bg-terra-800">Save expense</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Modal toggle
+    const modal = document.getElementById('quick-add-modal');
+    document.getElementById('open-quick-add').addEventListener('click', () => modal.classList.remove('hidden'));
+    document.getElementById('close-quick-add').addEventListener('click', () => modal.classList.add('hidden'));
+    document.getElementById('close-quick-add-2').addEventListener('click', () => modal.classList.add('hidden'));
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
+
+    // Donut chart
+    const donut = echarts.init(document.getElementById('donut-chart'));
+    donut.setOption({
+      tooltip: { trigger: 'item', formatter: '{b}<br/>₹{c} ({d}%)', backgroundColor: '#1C1917', textStyle: { color: '#FAF7F2', fontFamily: 'Inter' } },
+      series: [{
+        type: 'pie',
+        radius: ['62%', '88%'],
+        center: ['50%', '52%'],
+        avoidLabelOverlap: true,
+        itemStyle: { borderColor: '#FFFFFF', borderWidth: 3 },
+        label: { show: false },
+        labelLine: { show: false },
+        data: [
+          { value: 18200, name: 'Groceries', itemStyle: { color: '#C2410C' } },
+          { value: 12400, name: 'Dining', itemStyle: { color: '#D97706' } },
+          { value: 8900, name: 'Fuel', itemStyle: { color: '#57534E' } },
+          { value: 6200, name: 'Utilities', itemStyle: { color: '#4D7C5A' } },
+          { value: 5400, name: 'Shopping', itemStyle: { color: '#BE185D' } },
+          { value: 3650, name: 'Entertainment', itemStyle: { color: '#6D28D9' } },
+          { value: 3200, name: 'Health', itemStyle: { color: '#0F766E' } },
+          { value: 29500, name: 'Other', itemStyle: { color: '#A8A29E' } },
+        ],
+      }],
+    });
+
+    // Center label via graphic
+    donut.setOption({
+      graphic: {
+        type: 'text',
+        left: 'center',
+        top: '46%',
+        style: { text: '₹87,450', fill: '#1C1917', fontSize: 20, fontWeight: 700, fontFamily: 'JetBrains Mono' }
+      }
+    });
+
+    // Line chart
+    const line = echarts.init(document.getElementById('line-chart'));
+    line.setOption({
+      grid: { left: 40, right: 16, top: 16, bottom: 28 },
+      tooltip: { trigger: 'axis', backgroundColor: '#1C1917', textStyle: { color: '#FAF7F2', fontFamily: 'Inter' }, valueFormatter: v => '₹' + v.toLocaleString('en-IN') },
+      xAxis: {
+        type: 'category',
+        data: ['Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+        axisLine: { lineStyle: { color: '#E7E5E4' } },
+        axisTick: { show: false },
+        axisLabel: { color: '#78716C', fontSize: 11, fontFamily: 'Inter' },
+      },
+      yAxis: {
+        type: 'value',
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: { lineStyle: { color: '#F1EFEC' } },
+        axisLabel: { color: '#78716C', fontSize: 10, fontFamily: 'JetBrains Mono', formatter: v => '₹' + (v/1000) + 'K' },
+      },
+      series: [
+        {
+          name: 'Income',
+          type: 'line',
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 6,
+          itemStyle: { color: '#C2410C' },
+          lineStyle: { width: 2.5 },
+          areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(194, 65, 12, 0.18)' }, { offset: 1, color: 'rgba(194, 65, 12, 0)' }] } },
+          data: [180000, 185000, 180000, 192000, 188000, 185000],
+        },
+        {
+          name: 'Expense',
+          type: 'line',
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 6,
+          itemStyle: { color: '#78716C' },
+          lineStyle: { width: 2.5 },
+          data: [72000, 84000, 78000, 92000, 88500, 87450],
+        },
+      ],
+    });
+
+    // Mobile donut
+    const mDonut = echarts.init(document.getElementById('mobile-donut'));
+    mDonut.setOption({
+      tooltip: { show: false },
+      series: [{
+        type: 'pie',
+        radius: ['60%', '85%'],
+        center: ['50%', '52%'],
+        itemStyle: { borderColor: '#FFFFFF', borderWidth: 2 },
+        label: { show: false },
+        data: [
+          { value: 18200, itemStyle: { color: '#C2410C' } },
+          { value: 12400, itemStyle: { color: '#D97706' } },
+          { value: 8900, itemStyle: { color: '#57534E' } },
+          { value: 6200, itemStyle: { color: '#4D7C5A' } },
+          { value: 5400, itemStyle: { color: '#BE185D' } },
+          { value: 36500, itemStyle: { color: '#A8A29E' } },
+        ],
+      }],
+    });
+
+    // Resize
+    window.addEventListener('resize', () => { donut.resize(); line.resize(); mDonut.resize(); });
+  </script>
+</body>
+</html>
