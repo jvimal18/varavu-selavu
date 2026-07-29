@@ -1,6 +1,8 @@
 /**
  * Dashboard composable — aggregates for the dashboard.
  */
+import { computeAccountBalances, computeNetWorth } from '~/composables/useAccountBalances'
+
 export interface DashboardData {
   netWorth: number
   monthIncome: number
@@ -49,15 +51,9 @@ export const useDashboard = () => {
     const monthExpense = thisMonthTxns.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
     const monthSavingsRate = monthIncome > 0 ? ((monthIncome - monthExpense) / monthIncome) * 100 : 0
 
-    // Net worth: bank/cash/wallet positive, credit card subtracted
-    let netWorth = 0
-    for (const a of accounts.value) {
-      // For v1: treat openingBalance as current balance
-      // TODO: compute from transactions in Sprint 3
-      const bal = a.openingBalance
-      if (a.type === 'credit_card') netWorth -= Math.abs(bal)
-      else netWorth += bal
-    }
+    // Compute dynamic balances from transactions
+    const balances = computeAccountBalances(accounts.value, transactions.value)
+    const netWorth = computeNetWorth(accounts.value, balances)
 
     // Top categories
     const catTotals = new Map<string, number>()
@@ -79,12 +75,12 @@ export const useDashboard = () => {
     // Recent transactions
     const recentTransactions = transactions.value.slice(0, 10)
 
-    // Account cards
+    // Account cards with DYNAMIC balance
     const accountCards = accounts.value.map((a) => ({
       id: a.id,
       name: a.name,
       type: a.type,
-      balance: a.openingBalance,
+      balance: balances.get(a.id) || 0,
       creditLimit: a.creditLimit,
       color: a.color,
       icon: a.icon,

@@ -5,11 +5,13 @@ import { computed } from 'vue'
 
 const props = defineProps<{ account: Account }>()
 
+const { balanceFor } = useAccountBalances()
+const currentBalance = computed(() => balanceFor(props.account.id))
 const isCreditCard = computed(() => props.account.type === 'credit_card')
 
 const utilization = computed(() => {
   if (!isCreditCard.value || !props.account.creditLimit) return 0
-  return Math.min(100, (Math.abs(props.account.openingBalance) / props.account.creditLimit) * 100)
+  return Math.min(100, (Math.abs(currentBalance.value) / props.account.creditLimit) * 100)
 })
 
 const dueDateLabel = computed(() => {
@@ -43,7 +45,7 @@ const dueDateLabel = computed(() => {
     </div>
 
     <div class="num text-2xl font-bold" :class="isCreditCard ? 'text-warn-700' : 'text-ink-900'">
-      {{ formatPaise(account.openingBalance, { showDecimal: false }) }}
+      {{ formatPaise(currentBalance, { showDecimal: false }) }}
     </div>
     <div class="text-[11px] text-ink-500 mt-0.5">
       {{ isCreditCard ? 'Outstanding' : 'Available balance' }}

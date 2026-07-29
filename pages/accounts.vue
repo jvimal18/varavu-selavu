@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useAccounts, type Account } from '~/composables/useAccounts'
+import { useTransactions } from '~/composables/useTransactions'
+import { useAccountBalances } from '~/composables/useAccountBalances'
 import { useDataVersion } from '~/composables/useDataVersion'
 
-const { accounts, fetchAll, archive } = useAccounts()
+const { accounts, fetchAll: fetchAccounts, archive } = useAccounts()
+const { transactions, fetchAll: fetchTxns } = useTransactions()
+const { balances, netWorth, balanceFor } = useAccountBalances()
 const { version } = useDataVersion()
 const showForm = ref(false)
 const editing = ref<Account | null>(null)
 
-onMounted(() => fetchAll())
-watch(version, () => fetchAll())
+async function load() {
+  await Promise.all([fetchAccounts(), fetchTxns({ limit: 500 })])
+}
+
+onMounted(load)
+watch(version, load)
 
 const primary = computed(() => accounts.value.find((a) => a.type === 'bank') || accounts.value[0])
 const others = computed(() => accounts.value.filter((a) => a !== primary.value))
@@ -17,23 +25,22 @@ const others = computed(() => accounts.value.filter((a) => a !== primary.value))
 const totalBank = computed(() =>
   accounts.value
     .filter((a) => a.type !== 'credit_card')
-    .reduce((s, a) => s + a.openingBalance, 0)
+    .reduce((s, a) => s + (balances.value.get(a.id) || 0), 0)
 )
 const totalCreditUsed = computed(() =>
   accounts.value
     .filter((a) => a.type === 'credit_card')
-    .reduce((s, a) => s + Math.abs(a.openingBalance), 0)
+    .reduce((s, a) => s + Math.abs(balances.value.get(a.id) || 0), 0)
 )
-const netWorth = computed(() => totalBank.value - totalCreditUsed.value)
 
 function openAdd() { editing.value = null; showForm.value = true }
 function openEdit(a: Account) { editing.value = a; showForm.value = true }
-function onSaved() { fetchAll() }
+function onSaved() { load() }
 
 async function onArchive(a: Account) {
   if (!confirm(`Archive "${a.name}"? Past transactions will be preserved.`)) return
   await archive(a.id)
-  await fetchAll()
+  await load()
 }
 </script>
 
@@ -105,7 +112,7 @@ async function onArchive(a: Account) {
               </div>
               <span class="text-[10px] font-semibold bg-white/20 px-2 py-0.5 rounded-full uppercase tracking-wider">Primary</span>
             </div>
-            <div class="num text-3xl font-bold">₹{{ (primary.openingBalance / 100).toLocaleString('en-IN') }}</div>
+            <div class="num text-3xl font-bold">₹{{ (balanceFor(primary.id) / 100).toLocaleString('en-IN') }}</div>
             <div class="text-[11px] opacity-80 mt-1">Available balance</div>
           </div>
         </div>

@@ -37,7 +37,7 @@ const amountClass = computed(() => {
     :to="`/transactions/${transaction.id}`"
     class="row-hover -mx-2 px-2 py-2 rounded-lg flex items-center gap-3 group"
   >
-    <!-- Icon -->
+    <!-- Category / transfer icon -->
     <div
       class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
       :class="transaction.type === 'income' ? 'bg-success-50' : transaction.type === 'transfer' ? 'bg-warn-50' : 'bg-cream-200'"
@@ -74,22 +74,17 @@ const amountClass = computed(() => {
       </div>
     </div>
 
-    <!-- Spent by avatar (desktop) -->
-    <div v-if="user && !compact" class="hidden sm:flex items-center gap-1 flex-shrink-0">
-      <div
-        class="avatar w-5 h-5 rounded-full text-[10px]"
-        :style="{ backgroundColor: user.color }"
-      >{{ user.name[0] }}</div>
-      <span class="text-[10px] text-ink-500">{{ user.name }}</span>
-    </div>
-
-    <!-- Amount -->
-    <div class="text-right flex-shrink-0">
-      <div class="num text-sm font-semibold" :class="amountClass">
-        {{ formatSigned(transaction.amount, transaction.type) }}
+    <!-- Right side: spent-by + amount share the same flex line so they align -->
+    <div class="flex items-center gap-2.5 flex-shrink-0">
+      <div v-if="user && !compact" class="hidden sm:flex items-center gap-1.5">
+        <div
+          class="avatar w-5 h-5 rounded-full text-[10px]"
+          :style="{ backgroundColor: user.color }"
+        >{{ user.name[0] }}</div>
+        <span class="text-[10px] text-ink-500">{{ user.name }}</span>
       </div>
-      <div class="text-[10px] text-ink-400 mt-0.5 hidden sm:block">
-        {{ displayShortDate(transaction.date) }}
+      <div class="num text-sm font-semibold tabular-nums whitespace-nowrap" :class="amountClass">
+        {{ formatSigned(transaction.amount, transaction.type) }}
       </div>
     </div>
   </NuxtLink>

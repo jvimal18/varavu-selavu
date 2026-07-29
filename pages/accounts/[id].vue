@@ -3,13 +3,15 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAccounts, type Account } from '~/composables/useAccounts'
 import { useTransactions } from '~/composables/useTransactions'
+import { useAccountBalances } from '~/composables/useAccountBalances'
 import { useDataVersion } from '~/composables/useDataVersion'
 import { formatPaise, formatPaiseCompact } from '~/utils/money'
 
 const route = useRoute()
 const router = useRouter()
-const { accounts, byId, fetchAll } = useAccounts()
+const { accounts, byId, fetchAll: fetchAccts } = useAccounts()
 const { transactions, fetchAll: fetchTxns } = useTransactions()
+const { balanceFor } = useAccountBalances()
 const { version } = useDataVersion()
 
 const account = ref<Account | null>(null)
@@ -17,24 +19,24 @@ const showForm = ref(false)
 const showQuickAdd = ref(false)
 
 async function load() {
-  await fetchAll()
+  await Promise.all([fetchAccts(), fetchTxns({ limit: 500 })])
   account.value = byId(route.params.id as string) || null
-  await fetchTxns({ limit: 500 })
 }
 
 onMounted(load)
 watch(() => route.params.id, load)
-watch(version, () => load())
+watch(version, load)
 
 const accountTxns = computed(() => {
   if (!account.value) return []
   return transactions.value.filter((t) => t.accountId === account.value!.id || t.toAccountId === account.value!.id)
 })
 
+const currentBalance = computed(() => account.value ? balanceFor(account.value.id) : 0)
 const isCreditCard = computed(() => account.value?.type === 'credit_card')
 const utilization = computed(() => {
   if (!isCreditCard.value || !account.value?.creditLimit) return 0
-  return Math.min(100, (Math.abs(account.value.openingBalance) / account.value.creditLimit) * 100)
+  return Math.min(100, (Math.abs(currentBalance.value) / account.value.creditLimit) * 100)
 })
 
 function onSaved() { load() }
@@ -81,7 +83,7 @@ function onSaved() { load() }
             Edit
           </button>
         </div>
-        <div class="num text-4xl font-bold mb-1">₹{{ (account.openingBalance / 100).toLocaleString('en-IN') }}</div>
+        <div class="num text-4xl font-bold mb-1">₹{{ (currentBalance / 100).toLocaleString('en-IN') }}</div>
         <div class="text-xs opacity-80">
           {{ isCreditCard ? 'Outstanding balance' : 'Available balance' }}
         </div>
