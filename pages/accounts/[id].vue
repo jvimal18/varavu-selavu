@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useAccounts, type Account } from '~/composables/useAccounts'
 import { useTransactions } from '~/composables/useTransactions'
 import { useAccountBalances } from '~/composables/useAccountBalances'
 import { useDataVersion } from '~/composables/useDataVersion'
 import { formatPaise, formatPaiseCompact } from '~/utils/money'
+import { displayShortDate } from '~/utils/dates'
 
 const route = useRoute()
-const router = useRouter()
 const { accounts, byId, fetchAll: fetchAccts } = useAccounts()
 const { transactions, fetchAll: fetchTxns } = useTransactions()
 const { balanceFor } = useAccountBalances()
@@ -17,6 +17,11 @@ const { version } = useDataVersion()
 const account = ref<Account | null>(null)
 const showForm = ref(false)
 const showQuickAdd = ref(false)
+const quickAddDefaults = ref<{
+  type?: 'expense' | 'income' | 'transfer'
+  accountId?: string | null
+  toAccountId?: string | null
+}>({})
 
 async function load() {
   await Promise.all([fetchAccts(), fetchTxns({ limit: 500 })])
@@ -32,14 +37,43 @@ const accountTxns = computed(() => {
   return transactions.value.filter((t) => t.accountId === account.value!.id || t.toAccountId === account.value!.id)
 })
 
+// For CC: charges are expenses (outstanding up), payments are transfers in (outstanding down)
+const charges = computed(() => {
+  if (!account.value) return []
+  return accountTxns.value.filter((t) => t.type === 'expense' && t.accountId === account.value!.id)
+})
+const payments = computed(() => {
+  if (!account.value) return []
+  return accountTxns.value.filter((t) => t.type === 'transfer' && t.toAccountId === account.value!.id)
+})
+
 const currentBalance = computed(() => account.value ? balanceFor(account.value.id) : 0)
 const isCreditCard = computed(() => account.value?.type === 'credit_card')
+const outstanding = computed(() => isCreditCard.value ? Math.max(0, currentBalance.value) : 0)
+const available = computed(() => {
+  if (!isCreditCard.value || !account.value?.creditLimit) return 0
+  return Math.max(0, account.value.creditLimit - outstanding.value)
+})
 const utilization = computed(() => {
   if (!isCreditCard.value || !account.value?.creditLimit) return 0
-  return Math.min(100, (Math.abs(currentBalance.value) / account.value.creditLimit) * 100)
+  return Math.min(100, (outstanding.value / account.value.creditLimit) * 100)
+})
+const utilColor = computed(() => {
+  if (utilization.value > 70) return 'bg-danger-600'
+  if (utilization.value > 30) return 'bg-warn-600'
+  return 'bg-success-600'
 })
 
 function onSaved() { load() }
+
+function openQuickAdd(opts: { type?: 'expense' | 'income' | 'transfer'; accountId?: string; toAccountId?: string } = {}) {
+  quickAddDefaults.value = opts
+  showQuickAdd.value = true
+}
+function onQuickAddSaved() {
+  showQuickAdd.value = false
+  quickAddDefaults.value = {}
+}
 </script>
 
 <template>
@@ -55,8 +89,8 @@ function onSaved() { load() }
 
     <!-- Hero card -->
     <div
-      class="rounded-2xl p-6 text-white shadow-card mb-5 relative overflow-hidden"
-      :style="{ backgroundColor: account.color || '#C2410C' }"
+      class="rounded-2xl p-6 text-white shadow-card mb-4 relative overflow-hidden"
+      :style="{ backgroundColor: isCreditCard ? (account.color || '#B45309') : (account.color || '#C2410C') }"
     >
       <div class="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-white/10" />
       <div class="absolute -right-20 -bottom-20 w-64 h-64 rounded-full bg-white/5" />
@@ -64,7 +98,7 @@ function onSaved() { load() }
         <div class="flex items-center justify-between mb-6">
           <div class="flex items-center gap-3">
             <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
-              <Icon :name="`lucide:${account.icon || 'building-2'}`" size="22" />
+              <Icon :name="`lucide:${isCreditCard ? 'credit-card' : (account.icon || 'building-2')}`" size="22" />
             </div>
             <div>
               <div class="text-base font-semibold">{{ account.name }}</div>
@@ -83,45 +117,83 @@ function onSaved() { load() }
             Edit
           </button>
         </div>
-        <div class="num text-4xl font-bold mb-1">₹{{ (currentBalance / 100).toLocaleString('en-IN') }}</div>
+        <div class="num text-4xl font-bold mb-1">
+          ₹{{ (isCreditCard ? outstanding : currentBalance / 100).toLocaleString('en-IN') }}
+        </div>
         <div class="text-xs opacity-80">
           {{ isCreditCard ? 'Outstanding balance' : 'Available balance' }}
-        </div>
-
-        <!-- Credit card extra info -->
-        <div v-if="isCreditCard && account.creditLimit" class="mt-5 pt-5 border-t border-white/20">
-          <div class="flex items-center justify-between text-xs mb-2">
-            <span class="opacity-80">Used</span>
-            <span class="opacity-80">of {{ formatPaiseCompact(account.creditLimit) }}</span>
-          </div>
-          <div class="h-1.5 bg-white/20 rounded-full overflow-hidden">
-            <div
-              class="h-full bg-white rounded-full"
-              :class="utilization > 80 ? 'opacity-90' : 'opacity-80'"
-              :style="{ width: utilization + '%' }"
-            />
-          </div>
-          <div class="flex items-center justify-between mt-3 text-xs opacity-90">
-            <span v-if="account.statementDay">Statement: day {{ account.statementDay }}</span>
-            <span v-if="account.dueDay">Due: day {{ account.dueDay }}</span>
-          </div>
         </div>
       </div>
     </div>
 
-    <!-- Quick add button -->
-    <div class="flex items-center gap-2 mb-5">
-      <button @click="showQuickAdd = true" class="btn-primary">
+    <!-- CREDIT CARD: dedicated CC panel below hero -->
+    <div v-if="isCreditCard && account.creditLimit" class="card p-5 mb-5">
+      <div class="grid grid-cols-3 gap-4 mb-4">
+        <div>
+          <div class="label">Limit</div>
+          <div class="num text-lg font-bold text-ink-900 mt-1">{{ formatPaiseCompact(account.creditLimit) }}</div>
+        </div>
+        <div>
+          <div class="label">Outstanding</div>
+          <div class="num text-lg font-bold text-warn-700 mt-1">{{ formatPaiseCompact(outstanding) }}</div>
+        </div>
+        <div>
+          <div class="label">Available</div>
+          <div class="num text-lg font-bold text-ink-900 mt-1">{{ formatPaise(available, { showDecimal: false }) }}</div>
+        </div>
+      </div>
+
+      <!-- Utilization bar -->
+      <div class="mb-4">
+        <div class="flex items-center justify-between text-[11px] text-ink-500 mb-1.5">
+          <span>Utilization <span class="num font-semibold text-ink-700">{{ utilization.toFixed(0) }}%</span></span>
+          <span v-if="utilization > 70" class="text-danger-700 font-semibold">High use</span>
+        </div>
+        <div class="h-2 bg-cream-200 rounded-full overflow-hidden">
+          <div class="h-full rounded-full transition-all" :class="utilColor" :style="{ width: utilization + '%' }" />
+        </div>
+      </div>
+
+      <!-- Statement / Due -->
+      <div v-if="account.statementDay || account.dueDay" class="flex items-center gap-4 text-[11px] text-ink-500 mb-4">
+        <span v-if="account.statementDay">Statement: day <span class="num font-semibold text-ink-700">{{ account.statementDay }}</span></span>
+        <span v-if="account.dueDay">Due: day <span class="num font-semibold text-ink-700">{{ account.dueDay }}</span></span>
+      </div>
+
+      <!-- Actions for CC -->
+      <div class="flex items-center gap-2 pt-3 border-t border-ink-100">
+        <button @click="openQuickAdd({ type: 'transfer', toAccountId: account.id })" class="flex-1 btn-primary text-sm">
+          <Icon name="lucide:credit-card" size="14" />
+          Pay card
+        </button>
+        <button @click="openQuickAdd({ type: 'expense', accountId: account.id })" class="flex-1 btn-secondary text-sm">
+          <Icon name="lucide:plus" size="14" />
+          Add charge
+        </button>
+      </div>
+    </div>
+
+    <!-- NON-CC: simple add button -->
+    <div v-if="!isCreditCard" class="flex items-center gap-2 mb-5">
+      <button @click="openQuickAdd({ type: 'expense', accountId: account.id })" class="btn-primary">
         <Icon name="lucide:plus" size="14" />
         Add transaction
       </button>
     </div>
 
     <!-- Transactions for this account -->
-    <h2 class="text-sm font-semibold text-ink-500 uppercase tracking-wider mb-3">Transactions</h2>
+    <h2 class="text-sm font-semibold text-ink-500 uppercase tracking-wider mb-3">
+      {{ isCreditCard ? 'All activity' : 'Transactions' }}
+    </h2>
     <TransactionList :transactions="accountTxns" />
 
     <AccountForm v-model="showForm" :account="account" @saved="onSaved" />
-    <QuickAddModal v-model="showQuickAdd" :default-account-id="account.id" />
+    <QuickAddModal
+      v-model="showQuickAdd"
+      :default-type="quickAddDefaults.type"
+      :default-account-id="quickAddDefaults.accountId"
+      :default-to-account-id="quickAddDefaults.toAccountId"
+      @saved="onQuickAddSaved"
+    />
   </div>
 </template>

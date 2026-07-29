@@ -4,13 +4,17 @@ import { useAccounts, type Account } from '~/composables/useAccounts'
 import { useTransactions } from '~/composables/useTransactions'
 import { useAccountBalances } from '~/composables/useAccountBalances'
 import { useDataVersion } from '~/composables/useDataVersion'
+import { formatPaise, formatPaiseCompact } from '~/utils/money'
 
 const { accounts, fetchAll: fetchAccounts, archive } = useAccounts()
 const { transactions, fetchAll: fetchTxns } = useTransactions()
 const { balances, netWorth, balanceFor } = useAccountBalances()
 const { version } = useDataVersion()
+
 const showForm = ref(false)
 const editing = ref<Account | null>(null)
+const showQuickAdd = ref(false)
+const quickAddDefaults = ref<{ toAccountId?: string; type?: 'expense' | 'income' | 'transfer' }>({})
 
 async function load() {
   await Promise.all([fetchAccounts(), fetchTxns({ limit: 500 })])
@@ -19,19 +23,26 @@ async function load() {
 onMounted(load)
 watch(version, load)
 
-const primary = computed(() => accounts.value.find((a) => a.type === 'bank') || accounts.value[0])
-const others = computed(() => accounts.value.filter((a) => a !== primary.value))
+const bankAccounts = computed(() =>
+  accounts.value.filter((a) => a.type !== 'credit_card' && !a.archived)
+)
+const creditCards = computed(() =>
+  accounts.value.filter((a) => a.type === 'credit_card' && !a.archived)
+)
+const primary = computed(() =>
+  bankAccounts.value.find((a) => a.type === 'bank') || bankAccounts.value[0]
+)
 
 const totalBank = computed(() =>
-  accounts.value
-    .filter((a) => a.type !== 'credit_card')
-    .reduce((s, a) => s + (balances.value.get(a.id) || 0), 0)
+  bankAccounts.value.reduce((s, a) => s + (balances.value.get(a.id) || 0), 0)
 )
 const totalCreditUsed = computed(() =>
-  accounts.value
-    .filter((a) => a.type === 'credit_card')
-    .reduce((s, a) => s + Math.abs(balances.value.get(a.id) || 0), 0)
+  creditCards.value.reduce((s, a) => s + Math.abs(balances.value.get(a.id) || 0), 0)
 )
+const totalCreditLimit = computed(() =>
+  creditCards.value.reduce((s, a) => s + (a.creditLimit || 0), 0)
+)
+const totalAvailable = computed(() => totalCreditLimit.value - totalCreditUsed.value)
 
 function openAdd() { editing.value = null; showForm.value = true }
 function openEdit(a: Account) { editing.value = a; showForm.value = true }
@@ -41,6 +52,19 @@ async function onArchive(a: Account) {
   if (!confirm(`Archive "${a.name}"? Past transactions will be preserved.`)) return
   await archive(a.id)
   await load()
+}
+
+function onPayCard(a: Account) {
+  quickAddDefaults.value = { type: 'transfer', toAccountId: a.id }
+  showQuickAdd.value = true
+}
+function onAddExpense(a: Account) {
+  quickAddDefaults.value = { type: 'expense' }
+  showQuickAdd.value = true
+}
+function onQuickAddSaved() {
+  showQuickAdd.value = false
+  quickAddDefaults.value = {}
 }
 </script>
 
@@ -72,78 +96,137 @@ async function onArchive(a: Account) {
     </div>
 
     <template v-else>
-      <!-- Net worth summary -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+      <!-- Summary stats -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div class="card p-4">
           <div class="label">Net worth</div>
-          <div class="num text-2xl font-bold text-ink-900 mt-1">₹{{ (netWorth / 100).toLocaleString('en-IN') }}</div>
+          <div class="num text-xl font-bold text-ink-900 mt-1">₹{{ (netWorth / 100).toLocaleString('en-IN') }}</div>
+          <div class="text-[10px] text-ink-500 mt-0.5">Assets − liabilities</div>
         </div>
         <div class="card p-4">
-          <div class="label">Across all accounts</div>
-          <div class="num text-2xl font-bold text-ink-900 mt-1">₹{{ (totalBank / 100).toLocaleString('en-IN') }}</div>
+          <div class="label">Bank & wallets</div>
+          <div class="num text-xl font-bold text-ink-900 mt-1">₹{{ (totalBank / 100).toLocaleString('en-IN') }}</div>
+          <div class="text-[10px] text-ink-500 mt-0.5">{{ bankAccounts.length }} {{ bankAccounts.length === 1 ? 'account' : 'accounts' }}</div>
         </div>
         <div class="card p-4">
-          <div class="label">Credit card used</div>
-          <div class="num text-2xl font-bold text-warn-700 mt-1">₹{{ (totalCreditUsed / 100).toLocaleString('en-IN') }}</div>
+          <div class="label">CC outstanding</div>
+          <div class="num text-xl font-bold text-warn-700 mt-1">₹{{ (totalCreditUsed / 100).toLocaleString('en-IN') }}</div>
+          <div class="text-[10px] text-ink-500 mt-0.5">{{ creditCards.length }} {{ creditCards.length === 1 ? 'card' : 'cards' }}</div>
+        </div>
+        <div class="card p-4">
+          <div class="label">Total available</div>
+          <div class="num text-xl font-bold text-ink-900 mt-1">₹{{ (totalAvailable / 100).toLocaleString('en-IN') }}</div>
+          <div class="text-[10px] text-ink-500 mt-0.5">CC headroom</div>
         </div>
       </div>
 
-      <!-- Primary account hero -->
-      <NuxtLink v-if="primary" :to="`/accounts/${primary.id}`" class="block mb-4 group">
-        <div
-          class="rounded-2xl p-5 text-white shadow-card transition-shadow group-hover:shadow-lift relative overflow-hidden"
-          :style="{ backgroundColor: primary.color || '#C2410C' }"
-        >
-          <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10" />
-          <div class="absolute -right-12 -bottom-12 w-40 h-40 rounded-full bg-white/5" />
-          <div class="relative">
-            <div class="flex items-center justify-between mb-6">
-              <div class="flex items-center gap-2.5">
-                <div class="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
-                  <Icon :name="`lucide:${primary.icon || 'building-2'}`" size="18" />
-                </div>
-                <div>
-                  <div class="text-sm font-semibold">{{ primary.name }}</div>
-                  <div class="text-[11px] opacity-80 capitalize">
-                    {{ primary.type.replace('_', ' ') }}
-                    <span v-if="primary.last4"> · ••{{ primary.last4 }}</span>
+      <!-- BANK ACCOUNTS SECTION -->
+      <section v-if="bankAccounts.length > 0" class="mb-8">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-ink-500 uppercase tracking-wider">Bank accounts & wallets</h2>
+          <span class="text-[11px] text-ink-400">{{ bankAccounts.length }} {{ bankAccounts.length === 1 ? 'account' : 'accounts' }}</span>
+        </div>
+
+        <!-- Primary bank hero -->
+        <NuxtLink v-if="primary" :to="`/accounts/${primary.id}`" class="block mb-4 group">
+          <div
+            class="rounded-2xl p-5 text-white shadow-card transition-shadow group-hover:shadow-lift relative overflow-hidden"
+            :style="{ backgroundColor: primary.color || '#C2410C' }"
+          >
+            <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10" />
+            <div class="absolute -right-12 -bottom-12 w-40 h-40 rounded-full bg-white/5" />
+            <div class="relative">
+              <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
+                    <Icon :name="`lucide:${primary.icon || 'building-2'}`" size="18" />
+                  </div>
+                  <div>
+                    <div class="text-sm font-semibold">{{ primary.name }}</div>
+                    <div class="text-[11px] opacity-80 capitalize">
+                      {{ primary.type.replace('_', ' ') }}
+                      <span v-if="primary.last4"> · ••{{ primary.last4 }}</span>
+                    </div>
                   </div>
                 </div>
+                <span class="text-[10px] font-semibold bg-white/20 px-2 py-0.5 rounded-full uppercase tracking-wider">Primary</span>
               </div>
-              <span class="text-[10px] font-semibold bg-white/20 px-2 py-0.5 rounded-full uppercase tracking-wider">Primary</span>
+              <div class="num text-3xl font-bold">₹{{ (balanceFor(primary.id) / 100).toLocaleString('en-IN') }}</div>
+              <div class="text-[11px] opacity-80 mt-1">Available balance</div>
             </div>
-            <div class="num text-3xl font-bold">₹{{ (balanceFor(primary.id) / 100).toLocaleString('en-IN') }}</div>
-            <div class="text-[11px] opacity-80 mt-1">Available balance</div>
           </div>
-        </div>
-      </NuxtLink>
+        </NuxtLink>
 
-      <!-- Other accounts grid -->
-      <div v-if="others.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <div v-for="a in others" :key="a.id" class="relative group">
-          <NuxtLink :to="`/accounts/${a.id}`" class="block">
-            <AccountCard :account="a" />
-          </NuxtLink>
-          <div class="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              @click.stop.prevent="openEdit(a)"
-              class="p-1.5 bg-white border border-ink-200 rounded-md text-ink-700 hover:bg-cream-50 shadow-sm"
-              title="Edit"
-            >
-              <Icon name="lucide:pencil" size="12" />
-            </button>
-            <button
-              @click.stop.prevent="onArchive(a)"
-              class="p-1.5 bg-white border border-ink-200 rounded-md text-ink-500 hover:bg-cream-50 hover:text-danger-700 shadow-sm"
-              title="Archive"
-            >
-              <Icon name="lucide:archive" size="12" />
-            </button>
+        <!-- Other bank accounts grid -->
+        <div v-if="bankAccounts.length > 1" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div v-for="a in bankAccounts.filter((x) => x !== primary)" :key="a.id" class="relative group">
+            <NuxtLink :to="`/accounts/${a.id}`" class="block">
+              <AccountCard :account="a" />
+            </NuxtLink>
+            <div class="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                @click.stop.prevent="openEdit(a)"
+                class="p-1.5 bg-white border border-ink-200 rounded-md text-ink-700 hover:bg-cream-50 shadow-sm"
+                title="Edit"
+              >
+                <Icon name="lucide:pencil" size="12" />
+              </button>
+              <button
+                @click.stop.prevent="onArchive(a)"
+                class="p-1.5 bg-white border border-ink-200 rounded-md text-ink-500 hover:bg-cream-50 hover:text-danger-700 shadow-sm"
+                title="Archive"
+              >
+                <Icon name="lucide:archive" size="12" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <!-- CREDIT CARDS SECTION -->
+      <section v-if="creditCards.length > 0">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm font-semibold text-ink-500 uppercase tracking-wider">Credit cards</h2>
+            <span class="text-[10px] font-medium text-ink-400 bg-cream-200 px-2 py-0.5 rounded-full">borrowed · has limit</span>
+          </div>
+          <span class="text-[11px] text-ink-400">{{ creditCards.length }} {{ creditCards.length === 1 ? 'card' : 'cards' }}</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div v-for="a in creditCards" :key="a.id" class="relative group">
+            <CreditCardCard
+              :account="a"
+              @pay="onPayCard"
+              @view="(acc) => navigateTo(`/accounts/${acc.id}`)"
+            />
+            <div class="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                @click.stop.prevent="openEdit(a)"
+                class="p-1.5 bg-white border border-ink-200 rounded-md text-ink-700 hover:bg-cream-50 shadow-sm"
+                title="Edit"
+              >
+                <Icon name="lucide:pencil" size="12" />
+              </button>
+              <button
+                @click.stop.prevent="onArchive(a)"
+                class="p-1.5 bg-white border border-ink-200 rounded-md text-ink-500 hover:bg-cream-50 hover:text-danger-700 shadow-sm"
+                title="Archive"
+              >
+                <Icon name="lucide:archive" size="12" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
     </template>
 
     <AccountForm v-model="showForm" :account="editing" @saved="onSaved" />
+    <QuickAddModal
+      v-model="showQuickAdd"
+      :default-type="quickAddDefaults.type"
+      :default-to-account-id="quickAddDefaults.toAccountId"
+      @saved="onQuickAddSaved"
+    />
   </div>
 </template>

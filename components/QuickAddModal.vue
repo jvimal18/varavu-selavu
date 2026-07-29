@@ -11,6 +11,7 @@ import { todayISO } from '~/utils/dates'
 interface Props {
   modelValue: boolean
   defaultAccountId?: string | null
+  defaultToAccountId?: string | null
   defaultCategoryId?: string | null
   defaultType?: 'expense' | 'income' | 'transfer'
 }
@@ -55,6 +56,7 @@ watch(() => props.modelValue, async (open) => {
   if (!open) return
   if (props.defaultType) type.value = props.defaultType
   if (props.defaultAccountId) accountId.value = props.defaultAccountId
+  if (props.defaultToAccountId) toAccountId.value = props.defaultToAccountId
   if (props.defaultCategoryId) {
     categoryId.value = props.defaultCategoryId
     const c = categories.value.find((c) => c.id === props.defaultCategoryId)
@@ -63,10 +65,16 @@ watch(() => props.modelValue, async (open) => {
   amountStr.value = ''
   date.value = todayISO()
   description.value = ''
-  toAccountId.value = null
   error.value = null
   showCategoryPicker.value = false
   await Promise.all([fetchAccounts(), fetchCategories(), fetchUsers()])
+  // For "pay card" flows: pre-fill fromAccount to a non-CC account
+  if (type.value === 'transfer' && toAccountId.value) {
+    const fromCandidates = accounts.value.filter((a) => a.id !== toAccountId.value && a.type !== 'credit_card')
+    if (fromCandidates.length > 0) {
+      accountId.value = fromCandidates[0].id
+    }
+  }
   if (!accountId.value && accounts.value.length > 0) accountId.value = accounts.value[0].id
   if (!spentBy.value && auth.user) spentBy.value = auth.user.id
 })
