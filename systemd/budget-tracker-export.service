@@ -1,0 +1,11 @@
+[Unit]
+Description=VaravuSelavu nightly JSON export (budget data -> exports/ + Google Drive)
+# No [Install] section — this unit is pulled in by budget-tracker-export.timer.
+
+[Service]
+Type=oneshot
+User=budget
+WorkingDirectory=/var/lib/budget-tracker
+# 'budget' is a system user with no home dir; point rclone at the deployed config.
+Environment=RCLONE_CONFIG=/var/lib/budget-tracker/rclone.conf
+ExecStart=/usr/bin/bash /var/lib/budget-tracker/scripts/export.sh

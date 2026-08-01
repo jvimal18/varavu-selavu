@@ -1,0 +1,18 @@
+[Unit]
+Description=VaravuSelavu Budget Tracker
+After=network.target
+
+[Service]
+Type=simple
+User=budget
+# NOTE: systemd does NOT expand ${VAR} in unit files — paths below are absolute.
+# If you changed PI_APP_DIR in scripts/.env, edit them to match.
+WorkingDirectory=/var/lib/budget-tracker
+ExecStart=/usr/bin/node .output/server/index.mjs
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=NUXT_DB_PATH=/var/lib/budget-tracker/budget.db
+
+[Install]
+WantedBy=multi-user.target

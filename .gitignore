@@ -22,6 +22,9 @@ data/
 # Exports
 exports/
 
+# Deploy secrets (copy scripts/env.example to scripts/.env)
+scripts/.env
+
 # IDE
 .vscode
 .idea
