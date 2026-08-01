@@ -13,7 +13,7 @@ interface Props {
   defaultAccountId?: string | null
   defaultToAccountId?: string | null
   defaultCategoryId?: string | null
-  defaultType?: 'expense' | 'income' | 'transfer'
+  defaultType?: 'expense' | 'income' | 'transfer' | 'interest'
 }
 const props = defineProps<Props>()
 const emit = defineEmits<{
@@ -27,7 +27,7 @@ const { categories, roots, fetchAll: fetchCategories } = useCategories()
 const { create } = useTransactions()
 const { users, fetchAll: fetchUsers } = useUsers()
 
-const type = ref<'expense' | 'income' | 'transfer'>(props.defaultType || 'expense')
+const type = ref<'expense' | 'income' | 'transfer' | 'interest'>(props.defaultType || 'expense')
 const amountStr = ref('')               // raw user-typed string
 const amountPaise = computed(() => {
   const v = parseFloat(amountStr.value)
@@ -43,12 +43,17 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 const showCategoryPicker = ref(false)
 
+const INVESTMENT_TYPES = new Set(['mutual_fund', 'fixed_deposit', 'recurring_deposit'])
+
 // Account types that should never be a source (you don't spend from a CC;
 // investments/FD/RD are not liquid in v1 unless you explicitly redeem them).
 const NON_SOURCE_TYPES = new Set(['credit_card', 'mutual_fund', 'fixed_deposit', 'recurring_deposit'])
 
 // Strict picker: used for expense / income and for the default "from" pre-fill
 const sourceAccounts = computed(() => accounts.value.filter((a) => !NON_SOURCE_TYPES.has(a.type)))
+
+// Interest can only be credited to an investment account
+const interestAccounts = computed(() => accounts.value.filter((a) => INVESTMENT_TYPES.has(a.type)))
 
 // For the transfer "From" select: sourceAccounts + the currently-selected account
 // if it's a non-source type (so a pre-filled "Redeem from MF" still shows up).
@@ -75,17 +80,30 @@ watch(() => props.modelValue, async (open) => {
   type.value = props.defaultType || 'expense'
   accountId.value = props.defaultAccountId || null
   toAccountId.value = props.defaultToAccountId || null
-  if (props.defaultCategoryId) {
-    categoryId.value = props.defaultCategoryId
-    const c = categories.value.find((c) => c.id === props.defaultCategoryId)
-    if (c?.type === 'income') type.value = 'income'
-  }
+  categoryId.value = props.defaultCategoryId || null
   amountStr.value = ''
   date.value = todayISO()
   description.value = ''
   error.value = null
   showCategoryPicker.value = false
   await Promise.all([fetchAccounts(), fetchCategories(), fetchUsers()])
+
+  // Interest defaults
+  if (type.value === 'interest') {
+    if (!categoryId.value) {
+      categoryId.value = defaultInterestCategory()
+    }
+    if (!interestAccounts.value.some((a) => a.id === accountId.value)) {
+      accountId.value = interestAccounts.value[0]?.id || null
+    }
+    if (!spentBy.value && auth.user) spentBy.value = auth.user.id
+    return
+  }
+
+  if (props.defaultCategoryId) {
+    const c = categories.value.find((c) => c.id === props.defaultCategoryId)
+    if (c?.type === 'income') type.value = 'income'
+  }
   // For "pay card" / "invest" flows: pre-fill fromAccount to a source-able account
   if (type.value === 'transfer' && toAccountId.value) {
     const fromCandidates = accounts.value.filter(
@@ -125,13 +143,26 @@ function pressKey(k: string) {
   else amountStr.value += k
 }
 
+function defaultInterestCategory(): string | null {
+  const c = categories.value.find((c) => c.name.toLowerCase() === 'investment returns')
+  if (c) return c.id
+  const incomeRoots = roots('income')
+  return incomeRoots[0]?.id || null
+}
+
 const currentAccount = computed(() => accounts.value.find((a) => a.id === accountId.value))
 const currentToAccount = computed(() => accounts.value.find((a) => a.id === toAccountId.value))
 const currentSpentBy = computed(() => users.value.find((u) => u.id === spentBy.value) || auth.user)
 
+const accountOptions = computed(() => {
+  if (type.value === 'interest') return interestAccounts.value
+  if (type.value === 'transfer') return transferFromAccounts.value
+  return sourceAccounts.value
+})
+
 const visibleCategories = computed(() => {
   if (type.value === 'transfer') return []
-  const t = type.value
+  const t: 'expense' | 'income' = type.value === 'interest' ? 'income' : type.value === 'expense' ? 'expense' : 'income'
   return roots(t)
 })
 
@@ -139,6 +170,23 @@ function selectCategory(id: string) {
   categoryId.value = id
   showCategoryPicker.value = false
 }
+
+// When switching to interest, ensure the account is an investment account
+watch(type, (t) => {
+  if (t === 'interest') {
+    if (!interestAccounts.value.some((a) => a.id === accountId.value)) {
+      accountId.value = interestAccounts.value[0]?.id || null
+    }
+    if (!categoryId.value) {
+      categoryId.value = defaultInterestCategory()
+    }
+  } else if (t !== 'transfer') {
+    // expense / income cannot use an investment account as the source
+    if (!sourceAccounts.value.some((a) => a.id === accountId.value)) {
+      accountId.value = sourceAccounts.value[0]?.id || null
+    }
+  }
+})
 
 const selectedCategory = computed(() => categories.value.find((c) => c.id === categoryId.value))
 
@@ -151,7 +199,7 @@ async function save() {
   if (type.value === 'transfer') {
     if (!toAccountId.value) { error.value = 'Select destination account'; return }
     if (toAccountId.value === accountId.value) { error.value = 'Same account'; return }
-  } else {
+  } else if (type.value !== 'interest') {
     if (!categoryId.value) { error.value = 'Select a category'; return }
   }
   saving.value = true
@@ -218,15 +266,16 @@ const amountDisplay = computed(() => {
           <div class="px-5 pt-3 pb-3 flex items-center gap-2">
             <div class="flex bg-cream-200 rounded-xl p-1 flex-1">
               <button
-                v-for="t in ['expense', 'income', 'transfer'] as const"
+                v-for="t in ['expense', 'income', 'transfer', 'interest'] as const"
                 :key="t"
                 type="button"
                 @click="type = t; categoryId = null"
                 :class="[
-                  'flex-1 py-2 text-sm font-semibold rounded-lg transition-colors',
+                  'flex-1 py-2 text-sm font-semibold rounded-lg transition-colors inline-flex items-center justify-center gap-1.5',
                   type === t ? 'bg-white text-ink-900 shadow-soft' : 'text-ink-500'
                 ]"
               >
+                <Icon v-if="t === 'interest'" name="lucide:percent" size="14" />
                 {{ t[0].toUpperCase() + t.slice(1) }}
               </button>
             </div>
@@ -238,9 +287,9 @@ const amountDisplay = computed(() => {
           <!-- Amount display -->
           <div class="px-5 pt-2 pb-3 text-center border-b border-ink-100">
             <div class="text-[10px] text-ink-500 uppercase tracking-wider font-semibold">
-              {{ type === 'transfer' ? 'Transfer amount' : 'Amount' }}
+              {{ type === 'transfer' ? 'Transfer amount' : type === 'interest' ? 'Interest amount' : 'Amount' }}
             </div>
-            <div class="num text-5xl font-bold mt-1" :class="type === 'income' ? 'text-success-700' : type === 'transfer' ? 'text-warn-700' : 'text-terra-700'">
+            <div class="num text-5xl font-bold mt-1" :class="type === 'income' || type === 'interest' ? 'text-success-700' : type === 'transfer' ? 'text-warn-700' : 'text-terra-700'">
               ₹{{ amountDisplay }}
             </div>
           </div>
@@ -258,9 +307,9 @@ const amountDisplay = computed(() => {
                 <input v-model="date" type="date" class="input mt-1.5" />
               </div>
               <div>
-                <label class="label">Account</label>
+                <label class="label">{{ type === 'interest' ? 'Investment' : 'Account' }}</label>
                 <select v-model="accountId" class="input mt-1.5">
-                  <option v-for="a in sourceAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                  <option v-for="a in accountOptions" :key="a.id" :value="a.id">{{ a.name }}</option>
                 </select>
               </div>
             </div>
@@ -281,7 +330,7 @@ const amountDisplay = computed(() => {
               </div>
             </div>
 
-            <!-- Category (expense / income only) -->
+            <!-- Category (expense / income / interest) -->
             <div v-if="type !== 'transfer'">
               <label class="label">Category</label>
               <button
@@ -334,8 +383,8 @@ const amountDisplay = computed(() => {
               </div>
             </div>
 
-            <!-- Spent by / Received by (hidden for transfers) -->
-            <div v-if="type !== 'transfer'">
+            <!-- Spent by / Received by (hidden for transfers and interest) -->
+            <div v-if="type !== 'transfer' && type !== 'interest'">
               <label class="label">{{ type === 'income' ? 'Received by' : 'Spent by' }}</label>
               <div class="flex bg-cream-200 rounded-xl p-1 mt-1.5">
                 <button
@@ -391,11 +440,11 @@ const amountDisplay = computed(() => {
               :disabled="saving"
               class="w-full py-3 rounded-xl text-sm font-semibold transition-colors"
               :class="[
-                type === 'income' ? 'bg-success-700 hover:bg-success-600' : type === 'transfer' ? 'bg-warn-700 hover:bg-warn-600' : 'bg-terra-700 hover:bg-terra-800',
+                type === 'income' || type === 'interest' ? 'bg-success-700 hover:bg-success-600' : type === 'transfer' ? 'bg-warn-700 hover:bg-warn-600' : 'bg-terra-700 hover:bg-terra-800',
                 'text-white disabled:opacity-50'
               ]"
             >
-              {{ saving ? 'Saving…' : (type === 'income' ? 'Add income' : type === 'transfer' ? 'Transfer' : 'Save expense') }}
+              {{ saving ? 'Saving…' : (type === 'interest' ? 'Add interest' : type === 'income' ? 'Add income' : type === 'transfer' ? 'Transfer' : 'Save expense') }}
             </button>
             <p class="text-[10px] text-ink-400 text-center mt-1.5 hidden sm:block">
               Press <kbd class="px-1 bg-cream-100 border border-ink-200 rounded">⌘ Enter</kbd> to save · <kbd class="px-1 bg-cream-100 border border-ink-200 rounded">Esc</kbd> to close

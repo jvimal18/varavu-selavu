@@ -8,7 +8,7 @@ import { useDb, schema } from '~~/server/db/client'
 import { eq } from 'drizzle-orm'
 
 const Body = z.object({
-  type: z.enum(['expense', 'income', 'transfer']).optional(),
+  type: z.enum(['expense', 'income', 'transfer', 'interest']).optional(),
   amount: z.number().int().positive().optional(),
   date: z.string().optional(),
   accountId: z.string().min(1).optional(),

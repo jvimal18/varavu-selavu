@@ -43,10 +43,10 @@ export function formatPaiseCompact(paise: number): string {
   return `₹${r.toFixed(0)}`
 }
 
-/** Signed display: +₹100 / −₹100 / ₹100 (for transfer) */
-export function formatSigned(paise: number, type: 'expense' | 'income' | 'transfer'): string {
+/** Signed display: +₹100 / −₹100 / ₹100 (for transfer). Interest shows as a credit like income. */
+export function formatSigned(paise: number, type: 'expense' | 'income' | 'transfer' | 'interest'): string {
   const v = formatPaise(Math.abs(paise))
-  if (type === 'income') return `+${v}`
+  if (type === 'income' || type === 'interest') return `+${v}`
   if (type === 'transfer') return v
   return `−${v}`
 }

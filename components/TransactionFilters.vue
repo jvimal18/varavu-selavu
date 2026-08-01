@@ -143,14 +143,17 @@ const activeCount = computed(() => {
         ]"
       >All</button>
       <button
-        v-for="t in (['expense', 'income', 'transfer'] as const)"
+        v-for="t in (['expense', 'income', 'transfer', 'interest'] as const)"
         :key="t"
-        @click="setFilter('type', t)"
+        @click="setFilter('type', t as any)"
         :class="[
-          'chip capitalize',
+          'chip capitalize inline-flex items-center gap-1.5',
           modelValue.type === t ? 'border-terra-700 bg-terra-50 text-terra-700' : 'border border-ink-200 bg-white text-ink-700 hover:border-ink-300'
         ]"
-      >{{ t }}</button>
+      >
+        <Icon v-if="t === 'interest'" name="lucide:percent" size="12" />
+        {{ t }}
+      </button>
     </div>
   </div>
 </template>

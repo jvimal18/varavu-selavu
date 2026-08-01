@@ -25,8 +25,10 @@ const accountLabel = computed(() => {
   return account.value?.name || '—'
 })
 
+const isInterest = computed(() => (props.transaction.type as any) === 'interest')
+
 const amountClass = computed(() => {
-  if (props.transaction.type === 'income') return 'text-success-700'
+  if (props.transaction.type === 'income' || isInterest.value) return 'text-success-700'
   if (props.transaction.type === 'transfer') return 'text-warn-700'
   return 'text-ink-900'
 })
@@ -40,10 +42,16 @@ const amountClass = computed(() => {
     <!-- Category / transfer icon -->
     <div
       class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-      :class="transaction.type === 'income' ? 'bg-success-50' : transaction.type === 'transfer' ? 'bg-warn-50' : 'bg-cream-200'"
+      :class="isInterest ? 'bg-success-50' : transaction.type === 'income' ? 'bg-success-50' : transaction.type === 'transfer' ? 'bg-warn-50' : 'bg-cream-200'"
     >
       <Icon
-        v-if="transaction.type === 'transfer'"
+        v-if="isInterest"
+        name="lucide:percent"
+        :class="amountClass"
+        size="16"
+      />
+      <Icon
+        v-else-if="transaction.type === 'transfer'"
         name="lucide:arrow-right-left"
         :class="amountClass"
         size="16"
@@ -65,10 +73,10 @@ const amountClass = computed(() => {
     <!-- Description + meta -->
     <div class="flex-1 min-w-0">
       <div class="text-sm font-medium text-ink-900 truncate">
-        {{ transaction.description || (category?.name || 'Transfer') }}
+        {{ transaction.description || (category?.name || (isInterest ? 'Interest' : 'Transfer')) }}
       </div>
       <div class="text-[11px] text-ink-500 flex items-center gap-1.5 mt-0.5">
-        <span v-if="!compact">{{ category?.name || 'Transfer' }}</span>
+        <span v-if="!compact">{{ category?.name || (isInterest ? 'Interest' : 'Transfer') }}</span>
         <span v-if="!compact" class="text-ink-300">·</span>
         <span class="truncate">{{ accountLabel }}</span>
         <template v-if="!compact">

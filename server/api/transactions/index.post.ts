@@ -10,7 +10,7 @@ import { useDb, schema } from '~~/server/db/client'
 import { requireUser } from '~~/server/utils/auth'
 
 const Body = z.object({
-  type: z.enum(['expense', 'income', 'transfer']),
+  type: z.enum(['expense', 'income', 'transfer', 'interest']),
   amount: z.number().int().positive(),  // paise
   date: z.string().optional(),           // YYYY-MM-DD; defaults to today
   accountId: z.string().min(1),
@@ -32,6 +32,8 @@ export default defineEventHandler(async (event) => {
     if (!d.toAccountId) throw createError({ statusCode: 400, statusMessage: 'toAccountId required for transfer' })
     if (d.toAccountId === d.accountId) throw createError({ statusCode: 400, statusMessage: 'Cannot transfer to same account' })
     if (d.categoryId) throw createError({ statusCode: 400, statusMessage: 'Transfers cannot have a category' })
+  } else if (d.type === 'interest') {
+    if (d.toAccountId) throw createError({ statusCode: 400, statusMessage: 'Interest transactions cannot have a toAccountId' })
   } else {
     if (!d.categoryId) throw createError({ statusCode: 400, statusMessage: 'Category required for expense/income' })
   }

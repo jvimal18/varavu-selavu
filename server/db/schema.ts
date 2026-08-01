@@ -57,7 +57,7 @@ export const transactions = sqliteTable(
   'transactions',
   {
     id: text('id').primaryKey(),
-    type: text('type', { enum: ['expense', 'income', 'transfer'] }).notNull(),
+    type: text('type', { enum: ['expense', 'income', 'transfer', 'interest'] }).notNull(),
     amount: integer('amount').notNull(),                  // paise, always positive
     date: text('date').notNull(),                         // YYYY-MM-DD
     accountId: text('account_id').notNull(),              // FK accounts.id

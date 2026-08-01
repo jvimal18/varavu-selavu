@@ -3,7 +3,7 @@
  */
 export interface Transaction {
   id: string
-  type: 'expense' | 'income' | 'transfer'
+  type: 'expense' | 'income' | 'transfer' | 'interest'
   amount: number
   date: string
   accountId: string
@@ -22,7 +22,7 @@ export interface TransactionFilters {
   accountId?: string
   categoryId?: string
   spentBy?: string
-  type?: 'expense' | 'income' | 'transfer'
+  type?: 'expense' | 'income' | 'transfer' | 'interest'
   q?: string
   limit?: number
   offset?: number
@@ -44,7 +44,7 @@ export const useTransactions = () => {
   }
 
   async function create(input: {
-    type: 'expense' | 'income' | 'transfer'
+    type: 'expense' | 'income' | 'transfer' | 'interest'
     amount: number
     accountId: string
     toAccountId?: string

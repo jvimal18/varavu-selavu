@@ -9,7 +9,7 @@ const Query = z.object({
   accountId: z.string().optional(),
   categoryId: z.string().optional(),
   spentBy: z.string().optional(),
-  type: z.enum(['expense', 'income', 'transfer']).optional(),
+  type: z.enum(['expense', 'income', 'transfer', 'interest']).optional(),
   q: z.string().optional(),             // text search on description
   limit: z.coerce.number().int().min(1).max(500).default(100),
   offset: z.coerce.number().int().min(0).default(0),

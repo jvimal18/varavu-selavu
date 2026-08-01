@@ -9,6 +9,11 @@
  *   = opening + expense_in + transfer_out_from_CC - transfer_in_to_CC
  *   (charges add, payments subtract)
  *
+ * - Investment (mutual_fund / fixed_deposit / recurring_deposit): principal-only
+ *   = opening + interest_credits + transfer_in - transfer_out
+ *   Regular income/expense don't apply to investments; the 'interest' type is
+ *   the supported growth path.
+ *
  * For net worth: sum of non-CC balances minus sum of CC outstanding.
  */
 import type { Account } from '~/composables/useAccounts'
@@ -24,18 +29,27 @@ export function computeAccountBalances(
 
   for (const t of transactions) {
     const isCC = (id: string) => accounts.find((a) => a.id === id)?.type === 'credit_card'
+    const isInvestment = (id: string) => {
+      const a = accounts.find((acc) => acc.id === id)
+      return a?.type === 'mutual_fund' || a?.type === 'fixed_deposit' || a?.type === 'recurring_deposit'
+    }
 
     if (t.type === 'income') {
-      // Money comes into the account
-      map.set(t.accountId, (map.get(t.accountId) || 0) + t.amount)
+      // Money comes into the account (not for investments; they use 'interest')
+      if (!isInvestment(t.accountId)) {
+        map.set(t.accountId, (map.get(t.accountId) || 0) + t.amount)
+      }
     } else if (t.type === 'expense') {
       // Money leaves the account (or outstanding increases if CC)
       const acc = isCC(t.accountId)
       if (acc) {
         map.set(t.accountId, (map.get(t.accountId) || 0) + t.amount)
-      } else {
+      } else if (!isInvestment(t.accountId)) {
         map.set(t.accountId, (map.get(t.accountId) || 0) - t.amount)
       }
+    } else if (t.type === 'interest') {
+      // Compounding interest credited to the account (investments)
+      map.set(t.accountId, (map.get(t.accountId) || 0) + t.amount)
     } else if (t.type === 'transfer' && t.toAccountId) {
       // From: money leaves (or outstanding decreases if CC)
       const fromCC = isCC(t.accountId)

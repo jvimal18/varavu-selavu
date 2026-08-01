@@ -5,26 +5,29 @@ import { useAccounts, type Account } from '~/composables/useAccounts'
 import { useTransactions } from '~/composables/useTransactions'
 import { useAccountBalances } from '~/composables/useAccountBalances'
 import { useDataVersion } from '~/composables/useDataVersion'
-import { formatPaise, formatPaiseCompact, rupeesToPaise } from '~/utils/money'
+import { useCategories } from '~/composables/useCategories'
+import { formatPaise, formatPaiseCompact } from '~/utils/money'
 import { displayShortDate } from '~/utils/dates'
 
 const route = useRoute()
-const { accounts, byId, fetchAll: fetchAccts, update: updateAccount } = useAccounts()
+const { accounts, byId, fetchAll: fetchAccts } = useAccounts()
 const { transactions, fetchAll: fetchTxns } = useTransactions()
 const { balanceFor } = useAccountBalances()
 const { version } = useDataVersion()
+const { fetchAll: fetchCategories, roots } = useCategories()
 
 const account = ref<Account | null>(null)
 const showForm = ref(false)
 const showQuickAdd = ref(false)
 const quickAddDefaults = ref<{
-  type?: 'expense' | 'income' | 'transfer'
+  type?: 'expense' | 'income' | 'transfer' | 'interest'
   accountId?: string | null
   toAccountId?: string | null
+  categoryId?: string | null
 }>({})
 
 async function load() {
-  await Promise.all([fetchAccts(), fetchTxns({ limit: 500 })])
+  await Promise.all([fetchAccts(), fetchTxns({ limit: 500 }), fetchCategories()])
   account.value = byId(route.params.id as string) || null
 }
 
@@ -81,7 +84,13 @@ const utilColor = computed(() => {
 
 function onSaved() { load() }
 
-function openQuickAdd(opts: { type?: 'expense' | 'income' | 'transfer'; accountId?: string; toAccountId?: string } = {}) {
+function interestCategoryId() {
+  const c = roots('income').find((c) => c.name.toLowerCase() === 'investment returns')
+  if (c) return c.id
+  return roots('income')[0]?.id || null
+}
+
+function openQuickAdd(opts: { type?: 'expense' | 'income' | 'transfer' | 'interest'; accountId?: string; toAccountId?: string; categoryId?: string } = {}) {
   quickAddDefaults.value = opts
   showQuickAdd.value = true
 }
@@ -90,40 +99,13 @@ function onQuickAddSaved() {
   quickAddDefaults.value = {}
 }
 
-// --- Add interest (compounding) for investment accounts (D09) ---
-const showInterestModal = ref(false)
-const interestAmount = ref('')
-const interestError = ref<string | null>(null)
-const savingInterest = ref(false)
-function openInterestModal() {
-  interestAmount.value = ''
-  interestError.value = null
-  showInterestModal.value = true
-}
-function closeInterestModal() {
-  showInterestModal.value = false
-  interestAmount.value = ''
-  interestError.value = null
-}
-async function addInterest() {
+function openInterestQuickAdd() {
   if (!account.value) return
-  const rupees = parseFloat(interestAmount.value)
-  if (isNaN(rupees) || rupees <= 0) {
-    interestError.value = 'Enter an amount greater than 0'
-    return
-  }
-  savingInterest.value = true
-  interestError.value = null
-  try {
-    const interestPaise = rupeesToPaise(rupees)
-    const newOpening = (account.value.openingBalance || 0) + interestPaise
-    await updateAccount(account.value.id, { openingBalance: newOpening })
-    closeInterestModal()
-  } catch (e: any) {
-    interestError.value = e?.statusMessage || e?.message || 'Failed to add interest'
-  } finally {
-    savingInterest.value = false
-  }
+  openQuickAdd({
+    type: 'interest',
+    accountId: account.value.id,
+    categoryId: interestCategoryId(),
+  })
 }
 </script>
 
@@ -206,7 +188,7 @@ async function addInterest() {
           <Icon name="lucide:arrow-down-left" size="14" />
           Redeem
         </button>
-        <button @click="openInterestModal" class="flex-1 btn-secondary text-sm">
+        <button @click="openInterestQuickAdd" class="flex-1 btn-secondary text-sm">
           <Icon name="lucide:percent" size="14" />
           Add interest
         </button>
@@ -280,58 +262,9 @@ async function addInterest() {
       :default-type="quickAddDefaults.type"
       :default-account-id="quickAddDefaults.accountId"
       :default-to-account-id="quickAddDefaults.toAccountId"
+      :default-category-id="quickAddDefaults.categoryId"
       @saved="onQuickAddSaved"
     />
 
-    <!-- Add interest (compounding) modal -->
-    <div
-      v-if="showInterestModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/50 p-4"
-      @click.self="closeInterestModal"
-    >
-      <div class="card p-5 w-full max-w-sm shadow-2xl">
-        <div class="flex items-center gap-3 mb-3">
-          <div
-            class="w-10 h-10 rounded-xl flex items-center justify-center"
-            :style="{ backgroundColor: (account.color || '#C2410C') + '20' }"
-          >
-            <Icon name="lucide:percent" size="20" :style="{ color: account.color || '#C2410C' }" />
-          </div>
-          <div>
-            <h3 class="text-base font-semibold text-ink-900">Add interest</h3>
-            <div class="text-xs text-ink-500">Compounds into {{ account.name }}</div>
-          </div>
-        </div>
-
-        <p class="text-xs text-ink-500 mb-4">
-          Adds interest to the principal — no bank transaction, no effect on net worth.
-        </p>
-
-        <label class="label">Interest amount (₹)</label>
-        <input
-          v-model="interestAmount"
-          type="number"
-          step="any"
-          min="0"
-          inputmode="decimal"
-          class="input mt-1.5 num"
-          placeholder="0"
-          autofocus
-          @keyup.enter="addInterest"
-        />
-
-        <div v-if="interestError" class="mt-3 px-3 py-2 rounded-lg bg-danger-50 text-danger-700 text-xs font-medium">
-          {{ interestError }}
-        </div>
-
-        <div class="flex gap-2 mt-4">
-          <button @click="closeInterestModal" :disabled="savingInterest" class="btn-secondary flex-1">Cancel</button>
-          <button @click="addInterest" :disabled="savingInterest" class="btn-primary flex-1">
-            <Icon v-if="savingInterest" name="lucide:loader" size="14" class="animate-spin" />
-            {{ savingInterest ? 'Adding…' : 'Add interest' }}
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
