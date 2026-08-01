@@ -10,7 +10,6 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: 'layout-dashboard' },
   { to: '/transactions', label: 'Transactions', icon: 'list' },
   { to: '/accounts', label: 'Accounts', icon: 'wallet-cards' },
-  { to: '/profile', label: 'Profile', icon: 'user-circle' },
 ]
 
 const upcomingItems = [
@@ -34,7 +33,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 <template>
   <div class="min-h-screen md:flex">
     <!-- Sidebar (desktop) -->
-    <aside class="hidden md:flex md:w-60 md:flex-col md:border-r md:border-ink-200 md:bg-cream-50">
+    <aside class="hidden md:flex md:h-screen md:w-60 md:flex-col md:border-r md:border-ink-200 md:bg-cream-50 md:sticky md:top-0">
       <div class="px-5 py-5 flex items-center gap-2.5">
         <div class="w-8 h-8 rounded-xl bg-terra-700 flex items-center justify-center">
           <Icon name="lucide:trending-up" class="text-white" size="16" />
@@ -45,25 +44,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </div>
       </div>
 
-      <!-- User pill -->
-      <NuxtLink
-        to="/profile"
-        class="mx-3 mb-3 p-2.5 rounded-xl border border-ink-200 bg-white flex items-center gap-2.5 hover:border-ink-300 transition-colors"
-      >
-        <div
-          v-if="auth.user"
-          class="avatar w-8 h-8 rounded-full text-sm"
-          :style="{ backgroundColor: auth.user.color }"
-        >{{ auth.initial }}</div>
-        <div v-else class="w-8 h-8 rounded-full bg-ink-200" />
-        <div class="flex-1 min-w-0">
-          <div class="text-sm font-semibold text-ink-900 leading-tight truncate">{{ auth.user?.name || 'Loading…' }}</div>
-          <div class="text-[11px] text-ink-500">Active</div>
-        </div>
-        <Icon name="lucide:chevron-down" class="text-ink-400" size="14" />
-      </NuxtLink>
-
-      <nav class="flex-1 px-3 space-y-0.5">
+      <nav class="flex-1 min-h-0 overflow-y-auto px-3 space-y-0.5">
         <NuxtLink
           v-for="item in navItems"
           :key="item.to"
@@ -90,7 +71,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </NuxtLink>
       </nav>
 
-      <div class="p-3 border-t border-ink-200">
+      <div class="flex-shrink-0 p-3 border-t border-ink-200 bg-cream-50">
+        <NuxtLink
+          to="/profile"
+          class="mb-2 p-2.5 rounded-xl border border-ink-200 bg-white flex items-center gap-2.5 hover:border-ink-300 transition-colors"
+        >
+          <div
+            v-if="auth.user"
+            class="avatar w-8 h-8 rounded-full text-sm"
+            :style="{ backgroundColor: auth.user.color }"
+          >{{ auth.initial }}</div>
+          <div v-else class="w-8 h-8 rounded-full bg-ink-200" />
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-ink-900 leading-tight truncate">{{ auth.user?.name || 'Loading…' }}</div>
+            <div class="text-[11px] text-ink-500">Active</div>
+          </div>
+          <Icon name="lucide:chevron-right" class="text-ink-400" size="14" />
+        </NuxtLink>
         <button
           @click="auth.logout"
           class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-ink-700 hover:bg-cream-200 transition-colors"
@@ -120,13 +117,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             Quick add
             <kbd class="hidden md:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-mono bg-white/20 rounded">/</kbd>
           </button>
-          <div v-if="auth.user" class="hidden lg:flex items-center gap-2 text-sm text-ink-700">
-            <div
-              class="avatar w-7 h-7 rounded-full text-xs"
-              :style="{ backgroundColor: auth.user.color }"
-            >{{ auth.initial }}</div>
-            <span class="font-medium">{{ auth.user.name }}</span>
-          </div>
         </div>
       </header>
 
@@ -155,6 +145,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         >
           <Icon :name="`lucide:${item.icon}`" size="20" />
           <span>{{ item.label }}</span>
+        </NuxtLink>
+        <NuxtLink
+          to="/profile"
+          aria-label="Open profile"
+          title="Profile"
+          :class="[
+            'flex flex-col items-center gap-0.5 px-3 py-1 text-[10px] font-semibold transition-colors',
+            route.path === '/profile' ? 'text-terra-700' : 'text-ink-500'
+          ]"
+        >
+          <div
+            v-if="auth.user"
+            class="avatar w-5 h-5 rounded-full text-[10px]"
+            :style="{ backgroundColor: auth.user.color }"
+          >{{ auth.initial }}</div>
+          <div v-else class="w-5 h-5 rounded-full bg-ink-200" />
+          <span>Account</span>
         </NuxtLink>
       </nav>
     </div>
