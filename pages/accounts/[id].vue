@@ -47,8 +47,23 @@ const payments = computed(() => {
   return accountTxns.value.filter((t) => t.type === 'transfer' && t.toAccountId === account.value!.id)
 })
 
+const INVESTMENT_TYPES: Account['type'][] = ['mutual_fund', 'fixed_deposit', 'recurring_deposit']
+const investmentTypeLabels: Record<string, string> = {
+  mutual_fund: 'Mutual Fund',
+  fixed_deposit: 'Fixed Deposit',
+  recurring_deposit: 'Recurring Deposit',
+}
+const investmentIcons: Record<string, string> = {
+  mutual_fund: 'trending-up',
+  fixed_deposit: 'piggy-bank',
+  recurring_deposit: 'calendar-clock',
+}
+
 const currentBalance = computed(() => account.value ? balanceFor(account.value.id) : 0)
 const isCreditCard = computed(() => account.value?.type === 'credit_card')
+const isInvestment = computed(() => account.value ? INVESTMENT_TYPES.includes(account.value.type) : false)
+const investmentLabel = computed(() => isInvestment.value ? investmentTypeLabels[account.value!.type] : '')
+const investmentIcon = computed(() => isInvestment.value ? investmentIcons[account.value!.type] : 'trending-up')
 const outstanding = computed(() => isCreditCard.value ? Math.max(0, currentBalance.value) : 0)
 const available = computed(() => {
   if (!isCreditCard.value || !account.value?.creditLimit) return 0
@@ -98,12 +113,12 @@ function onQuickAddSaved() {
         <div class="flex items-center justify-between mb-6">
           <div class="flex items-center gap-3">
             <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
-              <Icon :name="`lucide:${isCreditCard ? 'credit-card' : (account.icon || 'building-2')}`" size="22" />
+              <Icon :name="`lucide:${isCreditCard ? 'credit-card' : isInvestment ? investmentIcon : (account.icon || 'building-2')}`" size="22" />
             </div>
             <div>
               <div class="text-base font-semibold">{{ account.name }}</div>
               <div class="text-xs opacity-80 capitalize">
-                {{ account.type.replace('_', ' ') }}
+                {{ isInvestment ? investmentLabel : account.type.replace('_', ' ') }}
                 <span v-if="account.last4"> · ••{{ account.last4 }}</span>
                 <span v-if="account.institution"> · {{ account.institution }}</span>
               </div>
@@ -121,8 +136,40 @@ function onQuickAddSaved() {
           ₹{{ (isCreditCard ? outstanding : currentBalance / 100).toLocaleString('en-IN') }}
         </div>
         <div class="text-xs opacity-80">
-          {{ isCreditCard ? 'Outstanding balance' : 'Available balance' }}
+          {{ isCreditCard ? 'Outstanding balance' : isInvestment ? 'Current value' : 'Available balance' }}
         </div>
+      </div>
+    </div>
+
+    <!-- INVESTMENT: dedicated panel below hero -->
+    <div v-if="isInvestment" class="card p-5 mb-5">
+      <div class="flex items-center gap-3 mb-4">
+        <div
+          class="w-11 h-11 rounded-xl flex items-center justify-center"
+          :style="{ backgroundColor: (account.color || '#C2410C') + '20' }"
+        >
+          <Icon :name="`lucide:${investmentIcon}`" size="22" :style="{ color: account.color || '#C2410C' }" />
+        </div>
+        <div>
+          <div class="text-base font-semibold text-ink-900">{{ account.name }}</div>
+          <div class="text-xs text-ink-500">{{ investmentLabel }}</div>
+        </div>
+      </div>
+
+      <div class="num text-3xl font-bold text-terra-700 mb-1">
+        ₹{{ (currentBalance / 100).toLocaleString('en-IN') }}
+      </div>
+      <div class="text-xs text-ink-500 mb-4">Current value</div>
+
+      <div class="flex items-center gap-2 pt-3 border-t border-ink-100">
+        <button @click="openQuickAdd({ type: 'transfer', toAccountId: account.id })" class="flex-1 btn-primary text-sm">
+          <Icon name="lucide:plus" size="14" />
+          Invest more
+        </button>
+        <button @click="openQuickAdd({ type: 'transfer', accountId: account.id })" class="flex-1 btn-secondary text-sm">
+          <Icon name="lucide:arrow-down-left" size="14" />
+          Redeem
+        </button>
       </div>
     </div>
 
@@ -174,7 +221,7 @@ function onQuickAddSaved() {
     </div>
 
     <!-- NON-CC: simple add button -->
-    <div v-if="!isCreditCard" class="flex items-center gap-2 mb-5">
+    <div v-if="!isCreditCard && !isInvestment" class="flex items-center gap-2 mb-5">
       <button @click="openQuickAdd({ type: 'expense', accountId: account.id })" class="btn-primary">
         <Icon name="lucide:plus" size="14" />
         Add transaction
@@ -183,7 +230,7 @@ function onQuickAddSaved() {
 
     <!-- Transactions for this account -->
     <h2 class="text-sm font-semibold text-ink-500 uppercase tracking-wider mb-3">
-      {{ isCreditCard ? 'All activity' : 'Transactions' }}
+      {{ isCreditCard || isInvestment ? 'All activity' : 'Transactions' }}
     </h2>
     <TransactionList :transactions="accountTxns" />
 

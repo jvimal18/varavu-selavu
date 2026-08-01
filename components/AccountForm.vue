@@ -17,6 +17,9 @@ const TYPE_OPTIONS: Array<{ value: Account['type']; label: string; icon: string;
   { value: 'credit_card', label: 'Credit card', icon: 'credit-card', defaultColor: '#B45309', defaultIcon: 'credit-card' },
   { value: 'cash', label: 'Cash', icon: 'banknote', defaultColor: '#15803D', defaultIcon: 'banknote' },
   { value: 'digital_wallet', label: 'Wallet', icon: 'smartphone', defaultColor: '#6D28D9', defaultIcon: 'smartphone' },
+  { value: 'mutual_fund', label: 'Mutual Fund', icon: 'trending-up', defaultColor: '#0F766E', defaultIcon: 'trending-up' },
+  { value: 'fixed_deposit', label: 'Fixed Deposit', icon: 'piggy-bank', defaultColor: '#0EA5E9', defaultIcon: 'piggy-bank' },
+  { value: 'recurring_deposit', label: 'Recurring Deposit', icon: 'calendar-clock', defaultColor: '#BE185D', defaultIcon: 'calendar-clock' },
   { value: 'other', label: 'Other', icon: 'circle-dot', defaultColor: '#78716C', defaultIcon: 'circle-dot' },
 ]
 

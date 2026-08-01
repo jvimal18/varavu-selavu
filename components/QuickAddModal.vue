@@ -43,10 +43,27 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 const showCategoryPicker = ref(false)
 
+// Account types that should never be a source (you don't spend from a CC;
+// investments/FD/RD are not liquid in v1 unless you explicitly redeem them).
+const NON_SOURCE_TYPES = new Set(['credit_card', 'mutual_fund', 'fixed_deposit', 'recurring_deposit'])
+
+// Strict picker: used for expense / income and for the default "from" pre-fill
+const sourceAccounts = computed(() => accounts.value.filter((a) => !NON_SOURCE_TYPES.has(a.type)))
+
+// For the transfer "From" select: sourceAccounts + the currently-selected account
+// if it's a non-source type (so a pre-filled "Redeem from MF" still shows up).
+const transferFromAccounts = computed(() => {
+  const base = sourceAccounts.value
+  if (type.value !== 'transfer' || !accountId.value) return base
+  if (base.some((a) => a.id === accountId.value)) return base
+  const extra = accounts.value.find((a) => a.id === accountId.value)
+  return extra ? [...base, extra] : base
+})
+
 onMounted(async () => {
   await Promise.all([fetchAccounts(), fetchCategories(), fetchUsers()])
-  if (!accountId.value && accounts.value.length > 0) {
-    accountId.value = accounts.value[0].id
+  if (!accountId.value && sourceAccounts.value.length > 0) {
+    accountId.value = sourceAccounts.value[0].id
   }
   if (!spentBy.value && auth.user) spentBy.value = auth.user.id
 })
@@ -54,9 +71,10 @@ onMounted(async () => {
 // Reset when modal opens
 watch(() => props.modelValue, async (open) => {
   if (!open) return
-  if (props.defaultType) type.value = props.defaultType
-  if (props.defaultAccountId) accountId.value = props.defaultAccountId
-  if (props.defaultToAccountId) toAccountId.value = props.defaultToAccountId
+  // Clear stale state from a previous open; then apply any provided defaults.
+  type.value = props.defaultType || 'expense'
+  accountId.value = props.defaultAccountId || null
+  toAccountId.value = props.defaultToAccountId || null
   if (props.defaultCategoryId) {
     categoryId.value = props.defaultCategoryId
     const c = categories.value.find((c) => c.id === props.defaultCategoryId)
@@ -68,14 +86,18 @@ watch(() => props.modelValue, async (open) => {
   error.value = null
   showCategoryPicker.value = false
   await Promise.all([fetchAccounts(), fetchCategories(), fetchUsers()])
-  // For "pay card" flows: pre-fill fromAccount to a non-CC account
+  // For "pay card" / "invest" flows: pre-fill fromAccount to a source-able account
   if (type.value === 'transfer' && toAccountId.value) {
-    const fromCandidates = accounts.value.filter((a) => a.id !== toAccountId.value && a.type !== 'credit_card')
+    const fromCandidates = accounts.value.filter(
+      (a) => a.id !== toAccountId.value && !NON_SOURCE_TYPES.has(a.type),
+    )
     if (fromCandidates.length > 0) {
       accountId.value = fromCandidates[0].id
     }
   }
-  if (!accountId.value && accounts.value.length > 0) accountId.value = accounts.value[0].id
+  if (!accountId.value && sourceAccounts.value.length > 0) {
+    accountId.value = sourceAccounts.value[0].id
+  }
   if (!spentBy.value && auth.user) spentBy.value = auth.user.id
 })
 
@@ -238,7 +260,7 @@ const amountDisplay = computed(() => {
               <div>
                 <label class="label">Account</label>
                 <select v-model="accountId" class="input mt-1.5">
-                  <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                  <option v-for="a in sourceAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
                 </select>
               </div>
             </div>
@@ -247,7 +269,7 @@ const amountDisplay = computed(() => {
               <div>
                 <label class="label">From</label>
                 <select v-model="accountId" class="input mt-1.5">
-                  <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                  <option v-for="a in transferFromAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
                 </select>
               </div>
               <div>

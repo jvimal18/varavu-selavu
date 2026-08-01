@@ -71,19 +71,26 @@ const amountClass = computed(() => {
         <span v-if="!compact">{{ category?.name || 'Transfer' }}</span>
         <span v-if="!compact" class="text-ink-300">·</span>
         <span class="truncate">{{ accountLabel }}</span>
+        <template v-if="!compact">
+          <span class="text-ink-300 sm:hidden">·</span>
+          <span class="sm:hidden">{{ displayShortDate(transaction.date) }}</span>
+        </template>
       </div>
     </div>
 
-    <!-- Right side: spent-by + amount share the same flex line so they align -->
-    <div class="flex items-center gap-2.5 flex-shrink-0">
-      <div v-if="user && !compact" class="hidden sm:flex items-center gap-1.5">
+    <div v-if="!compact" class="hidden sm:block w-20 flex-shrink-0 text-right text-[11px] text-ink-500">
+      {{ displayShortDate(transaction.date) }}
+    </div>
+
+    <div class="flex items-center justify-end gap-2.5 flex-shrink-0">
+      <div v-if="user && !compact" class="hidden sm:flex w-24 min-w-0 items-center gap-1.5">
         <div
           class="avatar w-5 h-5 rounded-full text-[10px]"
           :style="{ backgroundColor: user.color }"
         >{{ user.name[0] }}</div>
-        <span class="text-[10px] text-ink-500">{{ user.name }}</span>
+        <span class="text-[10px] text-ink-500 truncate">{{ user.name }}</span>
       </div>
-      <div class="num text-sm font-semibold tabular-nums whitespace-nowrap" :class="amountClass">
+      <div class="num w-20 text-right text-sm font-semibold tabular-nums whitespace-nowrap" :class="amountClass">
         {{ formatSigned(transaction.amount, transaction.type) }}
       </div>
     </div>

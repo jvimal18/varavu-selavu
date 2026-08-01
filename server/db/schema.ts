@@ -18,7 +18,7 @@ export const accounts = sqliteTable('accounts', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   type: text('type', {
-    enum: ['bank', 'credit_card', 'cash', 'digital_wallet', 'other'],
+    enum: ['bank', 'credit_card', 'cash', 'digital_wallet', 'mutual_fund', 'fixed_deposit', 'recurring_deposit', 'other'],
   }).notNull(),
   institution: text('institution'),
   last4: text('last4'),

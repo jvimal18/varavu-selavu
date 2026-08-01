@@ -11,7 +11,7 @@ import { useDb, schema } from '~~/server/db/client'
 
 const Body = z.object({
   name: z.string().min(1).max(80),
-  type: z.enum(['bank', 'credit_card', 'cash', 'digital_wallet', 'other']),
+  type: z.enum(['bank', 'credit_card', 'cash', 'digital_wallet', 'mutual_fund', 'fixed_deposit', 'recurring_deposit', 'other']),
   institution: z.string().max(80).optional().nullable(),
   last4: z.string().max(4).optional().nullable(),
   openingBalance: z.number().int().nonnegative(),  // paise

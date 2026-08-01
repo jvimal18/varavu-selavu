@@ -4,7 +4,7 @@
 export interface Account {
   id: string
   name: string
-  type: 'bank' | 'credit_card' | 'cash' | 'digital_wallet' | 'other'
+  type: 'bank' | 'credit_card' | 'cash' | 'digital_wallet' | 'mutual_fund' | 'fixed_deposit' | 'recurring_deposit' | 'other'
   institution: string | null
   last4: string | null
   openingBalance: number
