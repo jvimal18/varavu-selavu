@@ -23,7 +23,9 @@ export const useUserSettings = () => {
       settings.value = data
       fetched.value = true
     } catch (e) {
-      error.value = e
+      // Store a serializable string; devalue (Nuxt SSR payload serializer)
+      // cannot stringify raw Error/FetchError objects.
+      error.value = e instanceof Error ? e.message : 'Failed to load settings'
     } finally {
       pending.value = false
     }
@@ -48,8 +50,11 @@ export const useUserSettings = () => {
     await refresh()
   }
 
-  // Lazy fetch: trigger once on first use across all components.
-  if (!fetched.value) {
+  // Client-only fetch: SSR's internal $fetch to /api/user-settings 401s
+  // (auth cookie isn't forwarded on server-to-self requests), and storing
+  // the FetchError would crash SSR payload serialization. The settings
+  // aren't needed for SSR rendering; the client fetches after hydration.
+  if (import.meta.client && !fetched.value) {
     refresh()
   }
 

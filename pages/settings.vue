@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useUiStore, type Theme } from '~/stores/ui'
+import { APP_VERSION, APP_BUILD_DATE } from '~/composables/useAppVersion'
 
 const ui = useUiStore()
 
@@ -32,7 +33,6 @@ async function downloadBackup() {
   }
 }
 
-const BUILD_DATE = '2026-08-02'
 </script>
 
 <template>
@@ -140,11 +140,11 @@ const BUILD_DATE = '2026-08-02'
         </div>
         <div class="flex items-center justify-between py-1.5">
           <span class="text-ink-500">Version</span>
-          <span class="num">0.1</span>
+          <span class="num">{{ APP_VERSION }}</span>
         </div>
         <div class="flex items-center justify-between py-1.5">
           <span class="text-ink-500">Build date</span>
-          <span class="num">{{ BUILD_DATE }}</span>
+          <span class="num">{{ APP_BUILD_DATE }}</span>
         </div>
       </div>
       <div class="mt-4 pt-4 border-t border-ink-100">

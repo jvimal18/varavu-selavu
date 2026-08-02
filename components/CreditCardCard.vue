@@ -67,23 +67,7 @@ const statementDateLabel = computed(() => {
         </div>
       </div>
       <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
-        <span
-          v-if="isPrimary"
-          class="inline-flex items-center gap-1 text-[10px] font-semibold bg-success-50 text-success-700 px-2 py-0.5 rounded-full uppercase tracking-wider"
-        >
-          <Icon name="lucide:star" size="10" />
-          Primary
-        </span>
-        <button
-          v-else
-          type="button"
-          :disabled="settingsPending"
-          class="text-[10px] font-semibold text-terra-700 hover:bg-terra-50 px-2 py-0.5 rounded-full transition-colors disabled:opacity-50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-          @click.stop.prevent="setPrimary"
-        >
-          {{ settingsPending ? 'Saving…' : 'Set as primary' }}
-        </button>
-        <span
+<span
           v-if="utilization > 70"
           class="text-[10px] font-semibold bg-danger-50 text-danger-700 px-2 py-0.5 rounded-full uppercase tracking-wider"
         >High use</span>
@@ -128,7 +112,27 @@ const statementDateLabel = computed(() => {
       <span v-if="dueDateLabel">{{ dueDateLabel }}</span>
     </div>
 
-    <!-- Actions -->
+      <!-- Primary action (moved out of the top-right header to avoid the edit/archive hover overlay) -->
+      <div class="mt-2 flex justify-end">
+        <span
+          v-if="isPrimary"
+          class="inline-flex items-center gap-1 text-[10px] font-semibold bg-success-50 text-success-700 px-2 py-0.5 rounded-full uppercase tracking-wider"
+        >
+          <Icon name="lucide:star" size="10" />
+          Primary
+        </span>
+        <button
+          v-else
+          type="button"
+          :disabled="settingsPending"
+          class="text-[10px] font-semibold text-terra-700 hover:bg-terra-50 px-2 py-0.5 rounded-full transition-colors disabled:opacity-50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          @click.stop.prevent="setPrimary"
+        >
+          {{ settingsPending ? 'Saving…' : 'Set as primary' }}
+        </button>
+      </div>
+
+      <!-- Actions -->
     <div class="flex items-center gap-2 mt-4 pt-3 border-t border-ink-100">
       <button
         @click="emit('pay', account)"

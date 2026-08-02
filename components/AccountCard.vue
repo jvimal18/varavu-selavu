@@ -50,7 +50,17 @@ const dueDateLabel = computed(() => {
           </div>
         </div>
       </div>
-      <div class="flex-shrink-0">
+    </div>
+
+    <div class="flex items-baseline min-w-0">
+      <div class="num flex-1 min-w-0 text-[clamp(1.125rem,4.5vw,1.5rem)] font-bold" :class="isCreditCard ? 'text-warn-700' : 'text-ink-900'">
+        {{ formatPaise(currentBalance, { showDecimal: false }) }}
+      </div>
+    </div>
+      <div class="text-[11px] text-ink-500 mt-0.5">
+        {{ isCreditCard ? 'Outstanding' : 'Available balance' }}
+      </div>
+      <div class="mt-2 flex justify-end">
         <span
           v-if="isPrimary"
           class="inline-flex items-center gap-1 text-[10px] font-semibold bg-success-50 text-success-700 px-2 py-0.5 rounded-full uppercase tracking-wider"
@@ -68,18 +78,8 @@ const dueDateLabel = computed(() => {
           {{ settingsPending ? 'Saving…' : 'Set as primary' }}
         </button>
       </div>
-    </div>
 
-    <div class="flex items-baseline min-w-0">
-      <div class="num flex-1 min-w-0 text-[clamp(1.125rem,4.5vw,1.5rem)] font-bold" :class="isCreditCard ? 'text-warn-700' : 'text-ink-900'">
-        {{ formatPaise(currentBalance, { showDecimal: false }) }}
-      </div>
-    </div>
-    <div class="text-[11px] text-ink-500 mt-0.5">
-      {{ isCreditCard ? 'Outstanding' : 'Available balance' }}
-    </div>
-
-    <!-- Credit card utilization bar -->
+      <!-- Credit card utilization bar -->
     <div v-if="isCreditCard && account.creditLimit" class="mt-3">
       <div class="flex items-center justify-between text-[11px] text-ink-500 mb-1">
         <span>Used</span>

@@ -439,29 +439,6 @@ const saveLabel = computed(() => {
               </div>
             </div>
 
-            <!-- Spent by / Received by (hidden for transfers and interest) -->
-            <div v-if="type !== 'transfer' && type !== 'interest'">
-              <label class="label">{{ type === 'income' ? 'Received by' : 'Spent by' }}</label>
-              <div class="flex bg-cream-200 rounded-xl p-1 mt-1.5">
-                <button
-                  v-for="u in users"
-                  :key="u.id"
-                  type="button"
-                  @click="spentBy = u.id"
-                  :class="[
-                    'flex-1 py-1.5 text-xs font-semibold rounded-lg inline-flex items-center justify-center gap-1.5 transition-colors',
-                    spentBy === u.id ? 'bg-white text-ink-900 shadow-soft' : 'text-ink-500'
-                  ]"
-                >
-                  <div
-                    class="avatar w-5 h-5 rounded-full text-[10px]"
-                    :style="{ backgroundColor: u.color }"
-                  >{{ u.name[0] }}</div>
-                  {{ u.name }}
-                </button>
-              </div>
-            </div>
-
             <!-- Description -->
             <div>
               <label class="label">Description <span class="text-ink-400 normal-case font-normal">(optional)</span></label>
