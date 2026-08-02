@@ -10,10 +10,14 @@ import {
   TooltipComponent,
 } from 'echarts/components'
 import VChart from 'vue-echarts/csp'
+import { useUiStore } from '~/stores/ui'
 
 use([CanvasRenderer, LineChart, GridComponent, LegendComponent, TooltipComponent])
 
 defineOptions({ name: 'DashboardCashFlowChart' })
+
+const ui = useUiStore()
+const isDark = computed(() => ui.isDark)
 
 const props = withDefaults(
   defineProps<{
@@ -53,10 +57,18 @@ const incomeAreaColor = new graphic.LinearGradient(0, 0, 0, 1, [
   { offset: 1, color: 'rgba(194, 65, 12, 0)' },
 ])
 
-const expenseAreaColor = new graphic.LinearGradient(0, 0, 0, 1, [
-  { offset: 0, color: 'rgba(68, 64, 60, 0.10)' },
-  { offset: 1, color: 'rgba(68, 64, 60, 0)' },
-])
+const textColor = computed(() => (isDark.value ? '#FAF7F2' : '#1C1917'))
+const mutedColor = computed(() => (isDark.value ? '#A8A29E' : '#78716C'))
+const tooltipBg = computed(() => (isDark.value ? '#292524' : '#FFFFFF'))
+const tooltipBorder = computed(() => (isDark.value ? '#44403C' : '#EDE7DE'))
+const splitLineColor = computed(() => (isDark.value ? '#44403C' : '#F5F1EB'))
+const expenseLineColor = computed(() => (isDark.value ? '#A8A29E' : '#44403C'))
+const expenseAreaColor = computed(() =>
+  new graphic.LinearGradient(0, 0, 0, 1, [
+    { offset: 0, color: isDark.value ? 'rgba(168, 162, 158, 0.20)' : 'rgba(68, 64, 60, 0.10)' },
+    { offset: 1, color: isDark.value ? 'rgba(168, 162, 158, 0)' : 'rgba(68, 64, 60, 0)' },
+  ])
+)
 
 const chartOption = computed(() => {
   const reduced = prefersReducedMotion.value
@@ -80,7 +92,7 @@ const chartOption = computed(() => {
       itemHeight: 8,
       itemGap: 20,
       textStyle: {
-        color: '#44403C',
+        color: isDark.value ? '#A8A29E' : '#44403C',
         fontSize: 12,
         fontFamily: 'Inter, system-ui, sans-serif',
         fontWeight: 500,
@@ -88,16 +100,16 @@ const chartOption = computed(() => {
     },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#FFFFFF',
-      borderColor: '#EDE7DE',
+      backgroundColor: tooltipBg.value,
+      borderColor: tooltipBorder.value,
       borderWidth: 1,
       padding: 12,
       textStyle: {
-        color: '#1C1917',
+        color: textColor.value,
         fontFamily: 'Inter, system-ui, sans-serif',
       },
       extraCssText:
-        'box-shadow: 0 4px 12px rgba(28, 25, 23, 0.08); border-radius: 12px;',
+        `box-shadow: 0 4px 12px rgba(${isDark.value ? '0,0,0' : '28, 25, 23'}, 0.08); border-radius: 12px;`,
       formatter: (params: any[]) => {
         const items = Array.isArray(params) ? params : [params]
         const month = items[0]?.name ?? ''
@@ -110,17 +122,17 @@ const chartOption = computed(() => {
         const net = income - expense
         return `
           <div class="font-sans text-xs min-w-[8rem]">
-            <div class="font-semibold text-ink-900 mb-1.5">${month}</div>
+            <div class="font-semibold mb-1.5" style="color:${textColor.value}">${month}</div>
             <div class="flex items-center justify-between gap-4">
-              <span class="text-ink-500">Income</span>
-              <span class="num font-semibold text-ink-900">${rupeeFormatter.format(income)}</span>
+              <span style="color:${mutedColor.value}">Income</span>
+              <span class="num font-semibold" style="color:${textColor.value}">${rupeeFormatter.format(income)}</span>
             </div>
             <div class="flex items-center justify-between gap-4 mt-0.5">
-              <span class="text-ink-500">Expense</span>
-              <span class="num font-semibold text-ink-900">${rupeeFormatter.format(expense)}</span>
+              <span style="color:${mutedColor.value}">Expense</span>
+              <span class="num font-semibold" style="color:${textColor.value}">${rupeeFormatter.format(expense)}</span>
             </div>
-            <div class="mt-2 pt-1.5 border-t border-cream-200 flex items-center justify-between gap-4">
-              <span class="font-medium text-ink-900">Net</span>
+            <div class="mt-2 pt-1.5 border-t flex items-center justify-between gap-4" style="border-color:${isDark.value ? '#44403C' : '#EDE7DE'}">
+              <span class="font-medium" style="color:${textColor.value}">Net</span>
               <span class="num font-semibold ${net >= 0 ? 'text-success-700' : 'text-ink-900'}">${rupeeFormatter.format(net)}</span>
             </div>
           </div>
@@ -134,7 +146,7 @@ const chartOption = computed(() => {
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: {
-        color: '#78716C',
+        color: mutedColor.value,
         fontSize: 11,
         fontFamily: 'Inter, system-ui, sans-serif',
         margin: 12,
@@ -146,12 +158,12 @@ const chartOption = computed(() => {
       axisTick: { show: false },
       splitLine: {
         lineStyle: {
-          color: '#F5F1EB',
+          color: splitLineColor.value,
           type: [4, 4],
         },
       },
       axisLabel: {
-        color: '#A8A29E',
+        color: isDark.value ? '#D6D3D1' : '#A8A29E',
         fontSize: 11,
         fontFamily: '"JetBrains Mono", ui-monospace, monospace',
         formatter: (value: number) => compactRupeeFormatter.format(value),
@@ -166,7 +178,7 @@ const chartOption = computed(() => {
         symbolSize: 6,
         data: incomeData.value,
         lineStyle: { width: 3, color: '#C2410C' },
-        itemStyle: { color: '#C2410C', borderWidth: 2, borderColor: '#FFFFFF' },
+        itemStyle: { color: '#C2410C', borderWidth: 2, borderColor: isDark.value ? '#1C1917' : '#FFFFFF' },
         areaStyle: { color: incomeAreaColor },
         emphasis: { focus: 'series', scale: true },
       },
@@ -176,9 +188,9 @@ const chartOption = computed(() => {
         smooth: true,
         showSymbol: false,
         data: expenseData.value,
-        lineStyle: { width: 2.5, color: '#44403C' },
-        itemStyle: { color: '#44403C' },
-        areaStyle: { color: expenseAreaColor },
+        lineStyle: { width: 2.5, color: expenseLineColor.value },
+        itemStyle: { color: expenseLineColor.value },
+        areaStyle: { color: expenseAreaColor.value },
         emphasis: { focus: 'series' },
       },
     ],

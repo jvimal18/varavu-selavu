@@ -14,14 +14,16 @@
     "db:migrate": "tsx server/db/migrate.ts",
     "db:seed": "tsx server/db/seed.ts",
     "db:reset": "rm -f $NUXT_DB_PATH && pnpm db:migrate && pnpm db:seed",
-    "export:json": "tsx server/scripts/export.ts"
+    "export:json": "tsx server/scripts/export.ts",
+    "export": "node scripts/export.mjs",
+    "import": "tsx scripts/import.ts"
   },
   "dependencies": {
+    "@nuxt/icon": "^1.5.6",
+    "@nuxtjs/tailwindcss": "^6.12.2",
     "@pinia/nuxt": "^0.5.5",
     "@vueuse/core": "^11.2.0",
     "@vueuse/nuxt": "^11.2.0",
-    "@nuxt/icon": "^1.5.6",
-    "@nuxtjs/tailwindcss": "^6.12.2",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.3.0",
     "date-fns": "^4.1.0",
@@ -38,6 +40,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.7.5",
+    "@vite-pwa/nuxt": "1.1.1",
     "drizzle-kit": "^0.28.0",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3"

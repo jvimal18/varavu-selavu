@@ -14,6 +14,7 @@ const navItems = [
 
 const upcomingItems = [
   { to: '/categories', label: 'Categories', icon: 'layout-grid' },
+  { to: '/settings', label: 'Settings', icon: 'settings' },
 ]
 
 function onKeydown(e: KeyboardEvent) {
@@ -100,7 +101,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
     <!-- Main -->
     <div class="flex-1 flex flex-col min-w-0">
-      <header class="bg-cream-100/80 backdrop-blur border-b border-ink-200 sticky top-0 z-10">
+      <header class="bg-cream-100/80 dark:bg-ink-900/80 backdrop-blur border-b border-ink-200 dark:border-ink-700 sticky top-0 z-10">
         <div class="px-5 md:px-8 py-4 flex items-center gap-4">
           <NuxtLink to="/" class="md:hidden flex items-center gap-2">
             <div class="w-7 h-7 rounded-lg bg-terra-700 flex items-center justify-center">
@@ -109,6 +110,25 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <span class="font-bold text-ink-900">VaravuSelavu</span>
           </NuxtLink>
           <div class="flex-1" />
+          <NuxtLink
+            to="/settings"
+            class="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full text-ink-700 hover:bg-cream-200 transition-colors dark:text-ink-300 dark:hover:bg-ink-800"
+            aria-label="Settings"
+          >
+            <Icon name="lucide:settings" size="20" />
+          </NuxtLink>
+          <ClientOnly>
+            <ThemeToggle class="hidden sm:flex" />
+            <template #fallback>
+              <button
+                type="button"
+                class="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full text-ink-700 hover:bg-cream-200 transition-colors"
+                aria-label="Theme"
+              >
+                <Icon name="lucide:sun" size="20" />
+              </button>
+            </template>
+          </ClientOnly>
           <button
             @click="showQuickAdd = true"
             class="btn-primary hidden sm:inline-flex"
@@ -147,21 +167,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <span>{{ item.label }}</span>
         </NuxtLink>
         <NuxtLink
-          to="/profile"
-          aria-label="Open profile"
-          title="Profile"
+          to="/settings"
+          aria-label="Open settings"
+          title="Settings"
           :class="[
             'flex flex-col items-center gap-0.5 px-3 py-1 text-[10px] font-semibold transition-colors',
-            route.path === '/profile' ? 'text-terra-700' : 'text-ink-500'
+            route.path === '/settings' ? 'text-terra-700' : 'text-ink-500'
           ]"
         >
-          <div
-            v-if="auth.user"
-            class="avatar w-5 h-5 rounded-full text-[10px]"
-            :style="{ backgroundColor: auth.user.color }"
-          >{{ auth.initial }}</div>
-          <div v-else class="w-5 h-5 rounded-full bg-ink-200" />
-          <span>Account</span>
+          <Icon name="lucide:settings" size="20" />
+          <span>Settings</span>
         </NuxtLink>
       </nav>
     </div>

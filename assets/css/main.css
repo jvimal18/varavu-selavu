@@ -7,12 +7,13 @@
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    @apply bg-cream-100 dark:bg-ink-900;
   }
   body {
-    @apply bg-cream-100 text-ink-900;
+    @apply bg-cream-100 text-ink-900 dark:bg-ink-900 dark:text-cream-100;
   }
   *:focus-visible {
-    @apply outline-none ring-2 ring-terra-300 ring-offset-2 ring-offset-cream-100;
+    @apply outline-none ring-2 ring-terra-300 ring-offset-2 ring-offset-cream-100 dark:ring-terra-500 dark:ring-offset-ink-900;
   }
   /* Preserve focus on form inputs specifically */
   input:focus-visible,
@@ -31,30 +32,86 @@
 
 @layer components {
   .card {
-    @apply bg-white rounded-2xl border border-ink-100 shadow-card;
+    @apply bg-white rounded-2xl border border-ink-100 shadow-card dark:bg-ink-800 dark:border-ink-700 dark:text-cream-100;
   }
   .btn {
     @apply inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors;
   }
   .btn-primary {
-    @apply btn bg-terra-700 text-white hover:bg-terra-800 active:translate-y-px;
+    @apply btn bg-terra-700 text-white hover:bg-terra-800 active:translate-y-px dark:hover:bg-terra-600;
   }
   .btn-secondary {
-    @apply btn bg-white text-ink-900 border border-ink-200 hover:border-ink-300 hover:bg-cream-50;
+    @apply btn bg-white text-ink-900 border border-ink-200 hover:border-ink-300 hover:bg-cream-50 dark:bg-ink-800 dark:text-cream-100 dark:border-ink-700 dark:hover:bg-ink-700;
   }
   .btn-ghost {
-    @apply btn text-ink-700 hover:bg-cream-200;
+    @apply btn text-ink-700 hover:bg-cream-200 dark:text-ink-300 dark:hover:bg-ink-800;
   }
   .input {
-    @apply w-full px-3 py-2.5 bg-white border border-ink-200 rounded-lg text-sm placeholder:text-ink-400 focus:border-terra-700 focus:outline-none;
+    @apply w-full px-3 py-2.5 bg-white border border-ink-200 rounded-lg text-sm placeholder:text-ink-400 focus:border-terra-700 focus:outline-none dark:bg-ink-800 dark:border-ink-700 dark:text-cream-100 dark:placeholder:text-ink-500;
   }
   .label {
-    @apply text-[11px] font-semibold text-ink-500 uppercase tracking-wider;
+    @apply text-[11px] font-semibold text-ink-500 uppercase tracking-wider dark:text-ink-400;
   }
   .chip {
-    @apply inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors;
+    @apply inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors dark:border-ink-700 dark:text-ink-300;
   }
   .avatar {
     @apply inline-flex items-center justify-center font-semibold text-white;
+  }
+
+  /* Utility-level dark overrides to keep existing pages consistent without editing every file */
+  .dark .bg-cream-100,
+  .dark .bg-cream-50 {
+    @apply bg-ink-900;
+  }
+  .dark .bg-cream-200,
+  .dark .bg-cream-300 {
+    @apply bg-ink-700;
+  }
+  .dark .bg-white {
+    @apply bg-ink-800;
+  }
+  .dark .bg-ink-200 {
+    @apply bg-ink-700;
+  }
+  .dark .text-ink-900 {
+    color: theme('colors.cream.100');
+  }
+  .dark .text-ink-700 {
+    color: theme('colors.ink.300');
+  }
+  .dark .text-ink-500 {
+    color: theme('colors.ink.400');
+  }
+  .dark .text-ink-400 {
+    color: theme('colors.ink.300');
+  }
+  .dark .border-ink-100,
+  .dark .border-ink-200 {
+    @apply border-ink-700;
+  }
+  .dark .bg-terra-50 {
+    @apply bg-terra-800/20;
+  }
+  .dark .bg-danger-50 {
+    @apply bg-danger-700/20;
+  }
+  .dark .bg-success-50 {
+    @apply bg-success-700/20;
+  }
+  .dark .bg-warn-50 {
+    @apply bg-warn-700/20;
+  }
+  .dark .text-danger-700 {
+    color: theme('colors.danger.600');
+  }
+  .dark .text-success-700 {
+    color: theme('colors.success.600');
+  }
+  .dark .text-warn-700 {
+    color: theme('colors.warn.600');
+  }
+  .dark .text-terra-700 {
+    color: theme('colors.terra.500');
   }
 }

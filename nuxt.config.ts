@@ -8,7 +8,40 @@ export default defineNuxtConfig({
     '@vueuse/nuxt',
     '@nuxt/icon',
     '@nuxtjs/tailwindcss',
+    '@vite-pwa/nuxt',
   ],
+
+  pwa: {
+    registerType: 'autoUpdate',
+    manifest: {
+      name: 'VaravuSelavu',
+      short_name: 'VaravuSelavu',
+      description: 'Personal + household budget tracker',
+      theme_color: '#C2410C',
+      background_color: '#FAF7F2',
+      display: 'standalone',
+      start_url: '/',
+      icons: [
+        { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+      ],
+    },
+    workbox: {
+      navigateFallback: '/',
+      runtimeCaching: [
+        {
+          urlPattern: /\/api\/dashboard/,
+          handler: 'NetworkFirst',
+          options: {
+            cacheName: 'dashboard',
+            expiration: { maxAgeSeconds: 60 * 5 },
+          },
+        },
+      ],
+    },
+    devOptions: {
+      enabled: true,
+    },
+  },
 
   css: ['~/assets/css/main.css'],
 

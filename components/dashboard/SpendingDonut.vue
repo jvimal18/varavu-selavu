@@ -7,9 +7,13 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { PieChart } from 'echarts/charts'
 import { TitleComponent, TooltipComponent } from 'echarts/components'
 import VChart from 'vue-echarts/csp'
+import { useUiStore } from '~/stores/ui'
 import { formatPaise } from '~/utils/money'
 
 use([CanvasRenderer, PieChart, TitleComponent, TooltipComponent])
+
+const ui = useUiStore()
+const isDark = computed(() => ui.isDark)
 
 defineOptions({ name: 'DashboardSpendingDonut' })
 
@@ -35,6 +39,13 @@ const chartData = computed(() =>
   }))
 )
 
+const textColor = computed(() => (isDark.value ? '#FAF7F2' : '#1C1917'))
+const mutedColor = computed(() => (isDark.value ? '#A8A29E' : '#78716C'))
+const tooltipBg = computed(() => (isDark.value ? '#292524' : '#FFFFFF'))
+const tooltipBorder = computed(() => (isDark.value ? '#44403C' : '#EDE7DE'))
+const labelLineColor = computed(() => (isDark.value ? '#57534E' : '#D6D3D1'))
+const itemBorderColor = computed(() => (isDark.value ? '#292524' : '#FFFFFF'))
+
 const chartOption = computed(() => {
   const reduced = prefersReducedMotion.value
   return {
@@ -49,13 +60,13 @@ const chartOption = computed(() => {
       top: 'center',
       itemGap: 4,
       textStyle: {
-        color: '#78716C',
+        color: mutedColor.value,
         fontSize: 11,
         fontFamily: 'Inter, system-ui, sans-serif',
         fontWeight: 500,
       },
       subtextStyle: {
-        color: '#1C1917',
+        color: textColor.value,
         fontSize: 18,
         fontFamily: '"JetBrains Mono", ui-monospace, monospace',
         fontWeight: 700,
@@ -64,27 +75,27 @@ const chartOption = computed(() => {
     },
     tooltip: {
       trigger: 'item',
-      backgroundColor: '#FFFFFF',
-      borderColor: '#EDE7DE',
+      backgroundColor: tooltipBg.value,
+      borderColor: tooltipBorder.value,
       borderWidth: 1,
       padding: 12,
       textStyle: {
-        color: '#1C1917',
+        color: textColor.value,
         fontFamily: 'Inter, system-ui, sans-serif',
       },
       extraCssText:
-        'box-shadow: 0 4px 12px rgba(28, 25, 23, 0.08); border-radius: 12px;',
+        `box-shadow: 0 4px 12px rgba(${isDark.value ? '0,0,0' : '28, 25, 23'}, 0.08); border-radius: 12px;`,
       formatter: (params: any) => {
         const value = Number(params.value) || 0
         const percent = Number(params.percent) || 0
         return `
           <div class="font-sans text-xs">
-            <div class="flex items-center gap-1.5 font-medium text-ink-900">
+            <div class="flex items-center gap-1.5 font-medium" style="color:${textColor.value}">
               <span class="inline-block w-2 h-2 rounded-full" style="background-color:${params.color}"></span>
               ${params.name}
             </div>
-            <div class="num mt-1 text-ink-900 font-semibold">${formatPaise(value)}</div>
-            <div class="text-ink-500 text-[11px] mt-0.5">${percent.toFixed(0)}% of total</div>
+            <div class="num mt-1 font-semibold" style="color:${textColor.value}">${formatPaise(value)}</div>
+            <div class="text-[11px] mt-0.5" style="color:${mutedColor.value}">${percent.toFixed(0)}% of total</div>
           </div>
         `
       },
@@ -98,14 +109,14 @@ const chartOption = computed(() => {
         avoidLabelOverlap: true,
         itemStyle: {
           borderRadius: 6,
-          borderColor: '#FFFFFF',
+          borderColor: itemBorderColor.value,
           borderWidth: 2,
         },
         label: {
           show: true,
           position: 'outside',
           formatter: '{b}\n{d}%',
-          color: '#1C1917',
+          color: textColor.value,
           fontSize: 12,
           fontFamily: 'Inter, system-ui, sans-serif',
           fontWeight: 500,
@@ -114,7 +125,7 @@ const chartOption = computed(() => {
         labelLine: {
           length: 10,
           length2: 8,
-          lineStyle: { color: '#D6D3D1' },
+          lineStyle: { color: labelLineColor.value },
         },
         labelLayout: { hideOverlap: true },
         emphasis: {

@@ -81,6 +81,19 @@ ssh ${PI_SSH_OPTS} "${SSH_TARGET}" \
 echo "==> Service status:"
 ssh ${PI_SSH_OPTS} "${SSH_TARGET}" "${PI_SUDO} systemctl status budget-tracker --no-pager" || true
 
+# 9) verify the app responds. Run curl on the Pi: the app binds 127.0.0.1:3000
+#    (Tailscale Funnel terminates TLS), so the dev machine can't reach it directly.
+#    /api/auth/me without a cookie returns 401 — that still proves the app is up.
+echo "==> Verifying deployment..."
+sleep 2
+HTTP_CODE="$(ssh ${PI_SSH_OPTS} "${SSH_TARGET}" "curl -sS --max-time 5 -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/auth/me" || true)"
+if [ "${HTTP_CODE}" = "200" ] || [ "${HTTP_CODE}" = "401" ]; then
+  echo "✓ App is up (auth endpoint responding, HTTP ${HTTP_CODE})"
+else
+  echo "✗ App not responding (HTTP ${HTTP_CODE:-none}) — check: ssh ${SSH_TARGET} \"${PI_SUDO} journalctl -u budget-tracker -n 50 --no-pager\""
+  exit 1
+fi
+
 echo
 echo "Deployed ✓"
 echo "Check logs:  ssh ${SSH_TARGET} \"${PI_SUDO} journalctl -u budget-tracker -n 50 --no-pager\""

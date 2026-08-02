@@ -8,8 +8,9 @@
 #      budget-tracker-export.service). Detects it is already on the Pi and
 #      runs everything locally.
 #
-# NOTE: the Pi-side generator (scripts/export.mjs) is NOT implemented yet.
-# Until it exists, this script prints a warning and exits 0.
+# NOTE: uses scripts/export.mjs (deployed to ${PI_APP_DIR}/scripts/) to write
+# ${PI_APP_DIR}/exports/budget-YYYY-MM-DD.json, then pushes it to Google Drive
+# via rclone.
 #
 # Prerequisites:
 #   - rclone configured (docs/rclone-setup.md); the 'budget' user reads its
@@ -51,25 +52,16 @@ fi
 
 # --- 1) Generate the JSON export ---
 if [ "${ON_PI}" -eq 1 ]; then
-  if [ ! -f "${PI_APP_DIR}/scripts/export.mjs" ]; then
-    echo "WARNING: scripts/export.mjs not implemented yet — nothing to export."
-    echo "TODO: implement it (package.json 'export:json' points at server/scripts/export.ts;"
-    echo "      ship the built script to ${PI_APP_DIR}/scripts/export.mjs), then re-run."
-    exit 0
-  fi
+  echo "[export] generating ${FILE} ..."
   if [ "$(id -un)" = "budget" ]; then
-    node "${PI_APP_DIR}/scripts/export.mjs" --out "${PI_APP_DIR}/exports/"
+    node "${PI_APP_DIR}/scripts/export.mjs" "${FILE}"
   else
-    ${PI_SUDO} -u budget node "${PI_APP_DIR}/scripts/export.mjs" --out "${PI_APP_DIR}/exports/"
+    ${PI_SUDO} -u budget node "${PI_APP_DIR}/scripts/export.mjs" "${FILE}"
   fi
 else
-  if ! ssh ${PI_SSH_OPTS} "${SSH_TARGET}" "test -f ${PI_APP_DIR}/scripts/export.mjs"; then
-    echo "WARNING: scripts/export.mjs not implemented yet — nothing to export."
-    echo "TODO: implement it, deploy it to ${PI_APP_DIR}/scripts/export.mjs on the Pi, then re-run."
-    exit 0
-  fi
+  echo "[export] generating (on Pi) ${FILE} ..."
   ssh ${PI_SSH_OPTS} "${SSH_TARGET}" \
-    "${PI_SUDO} -u budget node ${PI_APP_DIR}/scripts/export.mjs --out ${PI_APP_DIR}/exports/"
+    "cd ${PI_APP_DIR} && ${PI_SUDO} -u budget node scripts/export.mjs '${FILE}'"
 fi
 
 # --- 2) rclone push + retention (runs where the JSON file lives) ---
