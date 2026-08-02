@@ -51,7 +51,7 @@ const groups = computed<DayGroup[]>(() => {
           <span v-else-if="g.total < 0" class="text-ink-700">−{{ Math.abs(g.total / 100).toLocaleString('en-IN') }}</span>
         </div>
       </div>
-      <div class="card divide-y divide-ink-100 px-2">
+      <div class="card divide-y divide-ink-100 dark:divide-ink-700 px-2">
         <TransactionRow v-for="t in g.txns" :key="t.id" :transaction="t" />
       </div>
     </div>

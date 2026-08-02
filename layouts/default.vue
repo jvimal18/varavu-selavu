@@ -65,7 +65,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           v-for="item in upcomingItems"
           :key="item.to"
           :to="item.to"
-          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-ink-700 hover:bg-cream-200 transition-colors"
+          :class="[
+            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+            route.path === item.to
+              ? 'bg-terra-50 text-terra-700'
+              : 'text-ink-700 hover:bg-cream-200'
+          ]"
         >
           <Icon :name="`lucide:${item.icon}`" size="16" />
           {{ item.label }}
