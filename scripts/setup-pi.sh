@@ -47,9 +47,9 @@ if ssh ${PI_SSH_OPTS} "${SSH_TARGET}" \
 else
   echo "    Installing Node 24 via NodeSource..."
   ssh ${PI_SSH_OPTS} "${SSH_TARGET}" \
-    "curl -fsSL https://deb.nodesource.com/setup_24.x | ${PI_SUDO} -E bash - && ${PI_SUDO} apt install -y nodejs"
+    "curl -fsSL https://deb.nodesource.com/setup_24.x | ${PI_SUDO} -E bash - && ${PI_SUDO} apt-get install -y nodejs"
   echo "    Installing build tools (native fallback for better-sqlite3)..."
-  ssh ${PI_SSH_OPTS} "${SSH_TARGET}" "${PI_SUDO} apt install -y build-essential python3"
+  ssh ${PI_SSH_OPTS} "${SSH_TARGET}" "${PI_SUDO} apt-get install -y build-essential python3"
 fi
 
 # 3) pnpm (global)
@@ -65,7 +65,7 @@ echo "==> Ensuring rclone..."
 if ssh ${PI_SSH_OPTS} "${SSH_TARGET}" "command -v rclone >/dev/null 2>&1"; then
   echo "    rclone already installed. Skipping."
 else
-  ssh ${PI_SSH_OPTS} "${SSH_TARGET}" "${PI_SUDO} apt update && ${PI_SUDO} apt install -y rclone"
+  ssh ${PI_SSH_OPTS} "${SSH_TARGET}" "${PI_SUDO} apt-get update && ${PI_SUDO} apt-get install -y rclone"
 fi
 
 # 5) "budget" system user (no shell, no home — runs the app + export timer)

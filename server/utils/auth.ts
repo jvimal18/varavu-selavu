@@ -4,7 +4,7 @@
  * The cookie payload is just the userId; we look up the user on each request.
  */
 import bcrypt from 'bcryptjs'
-import { getCookie, setCookie, deleteCookie, type H3Event, createError } from 'h3'
+import { getCookie, setCookie, deleteCookie, getRequestProtocol, type H3Event, createError } from 'h3'
 import { useDb, schema } from '../db/client'
 import { eq } from 'drizzle-orm'
 
@@ -33,7 +33,7 @@ export function setSessionUserId(event: H3Event, userId: string): void {
   setCookie(event, COOKIE_NAME, userId, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: getRequestProtocol(event) === 'https',
     maxAge: COOKIE_MAX_AGE,
     path: '/',
   })

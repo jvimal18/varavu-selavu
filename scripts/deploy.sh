@@ -2,8 +2,10 @@
 # scripts/deploy.sh — recurring deploy from the dev machine to the Pi.
 #
 # Builds locally, then:
-#   - rsyncs .output/, package.json, pnpm-lock.yaml, scripts/, systemd/ to the Pi
-#   - installs prod deps on the Pi
+#   - rsyncs .output/, package.json, pnpm-lock.yaml, db/migrations/, scripts/, systemd/ to the Pi
+#   - installs prod deps on the Pi (better-sqlite3 prebuild is copied over the
+#     dev-arch one so the native module matches the Pi's CPU)
+#   - runs migrations + seed (scripts/migrate.mjs, idempotent) as the budget user
 #   - installs the systemd units, reloads systemd, restarts budget-tracker
 #
 # Safe to re-run — do this after every code change.
@@ -62,16 +64,34 @@ echo "==> Syncing scripts/ ..."
 rsync -avz "${RSYNC_PATH[@]}" --exclude='.env' \
   scripts/ "${SSH_TARGET}:${PI_APP_DIR}/scripts/"
 
+# 5b) sync DB migrations (migrate.mjs runs these on the Pi at deploy time)
+echo "==> Syncing db/migrations/ ..."
+ssh ${PI_SSH_OPTS} "${SSH_TARGET}" "${PI_SUDO} mkdir -p ${PI_APP_DIR}/db"
+rsync -avz "${RSYNC_PATH[@]}" \
+  db/migrations/ "${SSH_TARGET}:${PI_APP_DIR}/db/migrations/"
+
 # 6) sync systemd units to a tmp dir on the Pi
 echo "==> Syncing systemd units ..."
 rsync -avz "${RSYNC_PATH[@]}" \
   systemd/ "${SSH_TARGET}:/tmp/budget-systemd/"
 
 # 7) remote: prod install + install units + reload + restart
-echo "==> Installing prod deps + restarting service on the Pi..."
+#    Native module fix: better-sqlite3 is built for the dev machine's arch and
+#    shipped inside .output/. After pnpm install on the Pi (which downloads the
+#    correct prebuild), copy that binary over the bundled one so the server
+#    doesn't die with ERR_DLOPEN_FAILED on ARM.
+#    Migrations + seed run via scripts/migrate.mjs (idempotent) as the 'budget'
+#    user so budget.db stays owned by the service user.
+echo "==> Installing prod deps + fixing native module + migrating + restarting on the Pi..."
 ssh ${PI_SSH_OPTS} "${SSH_TARGET}" \
   "cd ${PI_APP_DIR} && \
    ${PI_SUDO} pnpm install --prod --frozen-lockfile && \
+   if [ -f node_modules/better-sqlite3/build/Release/better_sqlite3.node ]; then \
+     ${PI_SUDO} cp -fL node_modules/better-sqlite3/build/Release/better_sqlite3.node .output/server/node_modules/better-sqlite3/build/Release/better_sqlite3.node; \
+   else \
+     (cd .output/server && ${PI_SUDO} npm rebuild better-sqlite3); \
+   fi && \
+   ${PI_SUDO} -u budget env NUXT_DB_PATH=${PI_APP_DIR}/budget.db node ${PI_APP_DIR}/scripts/migrate.mjs && \
    ${PI_SUDO} cp /tmp/budget-systemd/*.service /tmp/budget-systemd/*.timer /etc/systemd/system/ && \
    ${PI_SUDO} systemctl daemon-reload && \
    (${PI_SUDO} systemctl enable budget-tracker >/dev/null 2>&1 || true) && \
