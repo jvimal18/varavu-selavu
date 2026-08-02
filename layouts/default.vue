@@ -115,43 +115,43 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       <main class="flex-1 px-5 md:px-8 py-6 max-w-[1400px] w-full mx-auto pb-28 md:pb-8">
         <slot />
       </main>
-
-      <!-- Mobile FAB -->
-      <button
-        @click="showQuickAdd = true"
-        class="md:hidden fixed right-4 bottom-20 w-14 h-14 rounded-2xl bg-terra-700 text-white shadow-lift z-20 flex items-center justify-center"
-      >
-        <Icon name="lucide:plus" size="26" />
-      </button>
-
-      <!-- Mobile bottom nav -->
-      <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-cream-50 border-t border-ink-200 px-2 pt-1.5 pb-5 flex items-center justify-around z-20">
-        <NuxtLink
-          v-for="item in navItems"
-          :key="item.to"
-          :to="item.to"
-          :class="[
-            'flex flex-col items-center gap-0.5 px-3 py-1 text-[10px] font-semibold transition-colors',
-            route.path === item.to ? 'text-terra-700' : 'text-ink-500'
-          ]"
-        >
-          <Icon :name="`lucide:${item.icon}`" size="20" />
-          <span>{{ item.label }}</span>
-        </NuxtLink>
-        <NuxtLink
-          to="/settings"
-          aria-label="Open settings"
-          title="Settings"
-          :class="[
-            'flex flex-col items-center gap-0.5 px-3 py-1 text-[10px] font-semibold transition-colors',
-            route.path === '/settings' ? 'text-terra-700' : 'text-ink-500'
-          ]"
-        >
-          <Icon name="lucide:settings" size="20" />
-          <span>Settings</span>
-        </NuxtLink>
-      </nav>
     </div>
+
+    <!-- Mobile FAB -->
+    <button
+      @click="showQuickAdd = true"
+      class="md:hidden fixed right-4 bottom-20 w-14 h-14 rounded-2xl bg-terra-700 text-white shadow-lift z-20 flex items-center justify-center"
+    >
+      <Icon name="lucide:plus" size="26" />
+    </button>
+
+    <!-- Mobile bottom nav -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-cream-50 border-t border-ink-200 px-2 pt-1.5 pb-5 flex items-center justify-around z-20">
+      <NuxtLink
+        v-for="item in navItems"
+        :key="item.to"
+        :to="item.to"
+        :class="[
+          'flex flex-col items-center gap-0.5 px-3 py-1 text-[10px] font-semibold transition-colors',
+          route.path === item.to ? 'text-terra-700' : 'text-ink-500'
+        ]"
+      >
+        <Icon :name="`lucide:${item.icon}`" size="20" />
+        <span>{{ item.label }}</span>
+      </NuxtLink>
+      <NuxtLink
+        to="/settings"
+        aria-label="Open settings"
+        title="Settings"
+        :class="[
+          'flex flex-col items-center gap-0.5 px-3 py-1 text-[10px] font-semibold transition-colors',
+          route.path === '/settings' ? 'text-terra-700' : 'text-ink-500'
+        ]"
+      >
+        <Icon name="lucide:settings" size="20" />
+        <span>Settings</span>
+      </NuxtLink>
+    </nav>
 
     <QuickAddModal v-model="showQuickAdd" />
   </div>

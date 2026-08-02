@@ -32,6 +32,12 @@ const amountClass = computed(() => {
   if (props.transaction.type === 'transfer') return 'text-warn-700'
   return 'text-ink-900'
 })
+
+function editTransaction(e: MouseEvent) {
+  e.stopPropagation()
+  e.preventDefault()
+  navigateTo(`/transactions/${props.transaction.id}`)
+}
 </script>
 
 <template>
@@ -102,5 +108,14 @@ const amountClass = computed(() => {
         {{ formatSigned(transaction.amount, transaction.type) }}
       </div>
     </div>
+
+    <button
+      type="button"
+      title="Edit transaction"
+      class="flex-shrink-0 p-1.5 rounded-md text-ink-500 hover:text-ink-900 hover:bg-cream-200 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+      @click="editTransaction"
+    >
+      <Icon name="lucide:pencil" size="18" />
+    </button>
   </NuxtLink>
 </template>

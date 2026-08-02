@@ -6,10 +6,18 @@ import { useTransactions } from '~/composables/useTransactions'
 import { useAccountBalances } from '~/composables/useAccountBalances'
 import { useDataVersion } from '~/composables/useDataVersion'
 import { useCategories } from '~/composables/useCategories'
+import { useUserSettings } from '~/composables/useUserSettings'
 import { formatPaise, formatPaiseCompact } from '~/utils/money'
 import { displayShortDate } from '~/utils/dates'
 
 const route = useRoute()
+const { settings, pending: settingsPending, setPrimaryAccount } = useUserSettings()
+const isPrimary = computed(() => settings.value.primaryAccountId === account.value?.id)
+
+async function setPrimary() {
+  if (!account.value) return
+  await setPrimaryAccount(account.value.id)
+}
 const { accounts, byId, fetchAll: fetchAccts } = useAccounts()
 const { transactions, fetchAll: fetchTxns } = useTransactions()
 const { balanceFor } = useAccountBalances()
@@ -129,29 +137,49 @@ function openInterestQuickAdd() {
       <div class="absolute -right-20 -bottom-20 w-64 h-64 rounded-full bg-white/5" />
       <div class="relative">
         <div class="flex items-center justify-between mb-6">
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 min-w-0">
             <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
               <Icon :name="`lucide:${isCreditCard ? 'credit-card' : isInvestment ? investmentIcon : (account.icon || 'building-2')}`" size="22" />
             </div>
-            <div>
-              <div class="text-base font-semibold">{{ account.name }}</div>
-              <div class="text-xs opacity-80 capitalize">
+              <div class="min-w-0">
+                <div class="text-base font-semibold truncate">{{ account.name }}</div>
+                <div class="text-xs opacity-80 capitalize">
                 {{ isInvestment ? investmentLabel : account.type.replace('_', ' ') }}
                 <span v-if="account.last4"> · ••{{ account.last4 }}</span>
                 <span v-if="account.institution"> · {{ account.institution }}</span>
               </div>
             </div>
           </div>
-          <button
-            @click="showForm = true"
-            class="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5"
-          >
-            <Icon name="lucide:pencil" size="12" />
-            Edit
-          </button>
+          <div class="flex items-center gap-2">
+            <span
+              v-if="isPrimary"
+              class="inline-flex items-center gap-1 text-[10px] font-semibold bg-white/20 text-white px-2 py-0.5 rounded-full uppercase tracking-wider"
+            >
+              <Icon name="lucide:star" size="10" />
+              Primary
+            </span>
+            <button
+              v-else
+              type="button"
+              :disabled="settingsPending"
+              class="text-[10px] font-semibold text-white/90 hover:bg-white/20 px-2 py-0.5 rounded-full transition-colors disabled:opacity-50"
+              @click="setPrimary"
+            >
+              {{ settingsPending ? 'Saving…' : 'Set as primary' }}
+            </button>
+            <button
+              @click="showForm = true"
+              class="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5"
+            >
+              <Icon name="lucide:pencil" size="12" />
+              Edit
+            </button>
+          </div>
         </div>
-        <div class="num text-4xl font-bold mb-1">
-          ₹{{ (isCreditCard ? outstanding : currentBalance / 100).toLocaleString('en-IN') }}
+        <div class="flex items-baseline min-w-0 mb-1">
+          <div class="num flex-1 min-w-0 text-[clamp(1.5rem,5vw,2.25rem)] font-bold">
+            ₹{{ (isCreditCard ? outstanding : currentBalance / 100).toLocaleString('en-IN') }}
+          </div>
         </div>
         <div class="text-xs opacity-80">
           {{ isCreditCard ? 'Outstanding balance' : isInvestment ? 'Current value' : 'Available balance' }}
@@ -174,8 +202,10 @@ function openInterestQuickAdd() {
         </div>
       </div>
 
-      <div class="num text-3xl font-bold text-terra-700 mb-1">
-        ₹{{ (currentBalance / 100).toLocaleString('en-IN') }}
+      <div class="flex items-baseline min-w-0 mb-1">
+        <div class="num flex-1 min-w-0 text-[clamp(1.25rem,4.5vw,1.875rem)] font-bold text-terra-700">
+          ₹{{ (currentBalance / 100).toLocaleString('en-IN') }}
+        </div>
       </div>
       <div class="text-xs text-ink-500 mb-4">Current value</div>
 

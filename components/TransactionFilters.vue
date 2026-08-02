@@ -134,7 +134,7 @@ const activeCount = computed(() => {
     </div>
 
     <!-- Type chips -->
-    <div class="flex items-center gap-1.5">
+    <div class="flex items-center gap-1.5 flex-wrap pb-1">
       <button
         @click="setFilter('type', undefined)"
         :class="[

@@ -5,6 +5,7 @@ import { useAccounts } from '~/composables/useAccounts'
 import { useCategories } from '~/composables/useCategories'
 import { useTransactions, type Transaction } from '~/composables/useTransactions'
 import { useUsers } from '~/composables/useUsers'
+import { useUserSettings } from '~/composables/useUserSettings'
 import { rupeesToPaise } from '~/utils/money'
 import { todayISO } from '~/utils/dates'
 
@@ -24,8 +25,11 @@ const emit = defineEmits<{
 const auth = useAuthStore()
 const { accounts, fetchAll: fetchAccounts } = useAccounts()
 const { categories, roots, fetchAll: fetchCategories } = useCategories()
-const { create } = useTransactions()
+const { create, initQuickAddForm, quickAddForm } = useTransactions()
 const { users, fetchAll: fetchUsers } = useUsers()
+const { settings: userSettings } = useUserSettings()
+
+const primaryAccountId = computed(() => userSettings.value.primaryAccountId)
 
 const type = ref<'expense' | 'income' | 'transfer' | 'interest'>(props.defaultType || 'expense')
 const amountStr = ref('')               // raw user-typed string
@@ -87,6 +91,7 @@ watch(() => props.modelValue, async (open) => {
   error.value = null
   showCategoryPicker.value = false
   await Promise.all([fetchAccounts(), fetchCategories(), fetchUsers()])
+  initQuickAddForm()
 
   // Interest defaults
   if (type.value === 'interest') {
@@ -112,6 +117,10 @@ watch(() => props.modelValue, async (open) => {
     if (fromCandidates.length > 0) {
       accountId.value = fromCandidates[0].id
     }
+  }
+  // For non-transfer flows, pre-fill the primary account if no default was provided
+  if (type.value !== 'transfer' && !accountId.value) {
+    accountId.value = quickAddForm.value.accountId
   }
   if (!accountId.value && sourceAccounts.value.length > 0) {
     accountId.value = sourceAccounts.value[0].id
@@ -309,7 +318,9 @@ const amountDisplay = computed(() => {
               <div>
                 <label class="label">{{ type === 'interest' ? 'Investment' : 'Account' }}</label>
                 <select v-model="accountId" class="input mt-1.5">
-                  <option v-for="a in accountOptions" :key="a.id" :value="a.id">{{ a.name }}</option>
+                  <option v-for="a in accountOptions" :key="a.id" :value="a.id">
+                    {{ a.name }}<template v-if="a.id === primaryAccountId"> · Primary</template>
+                  </option>
                 </select>
               </div>
             </div>
@@ -318,14 +329,18 @@ const amountDisplay = computed(() => {
               <div>
                 <label class="label">From</label>
                 <select v-model="accountId" class="input mt-1.5">
-                  <option v-for="a in transferFromAccounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                  <option v-for="a in transferFromAccounts" :key="a.id" :value="a.id">
+                    {{ a.name }}<template v-if="a.id === primaryAccountId"> · Primary</template>
+                  </option>
                 </select>
               </div>
               <div>
                 <label class="label">To</label>
                 <select v-model="toAccountId" class="input mt-1.5">
                   <option :value="null" disabled>Choose destination</option>
-                  <option v-for="a in accounts.filter(x => x.id !== accountId)" :key="a.id" :value="a.id">{{ a.name }}</option>
+                  <option v-for="a in accounts.filter(x => x.id !== accountId)" :key="a.id" :value="a.id">
+                    {{ a.name }}<template v-if="a.id === primaryAccountId"> · Primary</template>
+                  </option>
                 </select>
               </div>
             </div>

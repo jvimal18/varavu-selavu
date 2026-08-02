@@ -32,6 +32,26 @@ export const useTransactions = () => {
   const transactions = useState<Transaction[]>('transactions', () => [])
   const loading = useState<boolean>('transactions:loading', () => false)
 
+  /**
+   * Quick-add form state, shared across components via useState.
+   * `accountId` is pre-filled with the user's primary account (fallback: first
+   * bank account) by `initQuickAddForm()`, called when the form opens — so the
+   * primary is resolved once on open, not on every render.
+   */
+  const quickAddForm = useState<{ accountId: string | null }>('txn:quickAddForm', () => ({ accountId: null }))
+
+  function initQuickAddForm() {
+    const { settings } = useUserSettings()
+    const primaryId = settings.value.primaryAccountId
+    if (primaryId) {
+      quickAddForm.value.accountId = primaryId
+      return
+    }
+    const { accounts } = useAccounts()
+    const firstBank = accounts.value.find((a) => a.type === 'bank' && !a.archived)
+    quickAddForm.value.accountId = firstBank?.id ?? null
+  }
+
   async function fetchAll(filters: TransactionFilters = {}) {
     loading.value = true
     try {
@@ -82,5 +102,5 @@ export const useTransactions = () => {
     return transactions.value.find((t) => t.id === id)
   }
 
-  return { transactions, loading, fetchAll, create, update, remove, byId }
+  return { transactions, loading, quickAddForm, initQuickAddForm, fetchAll, create, update, remove, byId }
 }

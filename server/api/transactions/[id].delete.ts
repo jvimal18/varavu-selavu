@@ -1,9 +1,11 @@
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { useDb, schema } from '~~/server/db/client'
 import { eq } from 'drizzle-orm'
+import { requireUser } from '~~/server/utils/auth'
 
 /** Hard delete — for v1, transactions can be fully deleted. */
 export default defineEventHandler(async (event) => {
+  await requireUser(event)
   const id = getRouterParam(event, 'id')
   if (!id) throw createError({ statusCode: 400, statusMessage: 'Transaction id required' })
   const db = useDb()

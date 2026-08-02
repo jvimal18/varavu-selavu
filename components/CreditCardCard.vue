@@ -3,9 +3,17 @@ import { computed } from 'vue'
 import type { Account } from '~/composables/useAccounts'
 import { useAccountBalances } from '~/composables/useAccountBalances'
 import { formatPaise, formatPaiseCompact } from '~/utils/money'
+import { useUserSettings } from '~/composables/useUserSettings'
 
 const props = defineProps<{ account: Account }>()
 const emit = defineEmits<{ pay: [a: Account]; view: [a: Account] }>()
+
+const { settings, pending: settingsPending, setPrimaryAccount } = useUserSettings()
+const isPrimary = computed(() => settings.value.primaryAccountId === props.account.id)
+
+async function setPrimary() {
+  await setPrimaryAccount(props.account.id)
+}
 
 const { balanceFor } = useAccountBalances()
 
@@ -58,17 +66,37 @@ const statementDateLabel = computed(() => {
           </div>
         </div>
       </div>
-      <span
-        v-if="utilization > 70"
-        class="text-[10px] font-semibold bg-danger-50 text-danger-700 px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0"
-      >High use</span>
+      <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
+        <span
+          v-if="isPrimary"
+          class="inline-flex items-center gap-1 text-[10px] font-semibold bg-success-50 text-success-700 px-2 py-0.5 rounded-full uppercase tracking-wider"
+        >
+          <Icon name="lucide:star" size="10" />
+          Primary
+        </span>
+        <button
+          v-else
+          type="button"
+          :disabled="settingsPending"
+          class="text-[10px] font-semibold text-terra-700 hover:bg-terra-50 px-2 py-0.5 rounded-full transition-colors disabled:opacity-50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          @click.stop.prevent="setPrimary"
+        >
+          {{ settingsPending ? 'Saving…' : 'Set as primary' }}
+        </button>
+        <span
+          v-if="utilization > 70"
+          class="text-[10px] font-semibold bg-danger-50 text-danger-700 px-2 py-0.5 rounded-full uppercase tracking-wider"
+        >High use</span>
+      </div>
     </div>
 
     <!-- Outstanding (the headline number) -->
     <div class="mb-3">
       <div class="text-[10px] font-semibold text-ink-500 uppercase tracking-wider">Outstanding</div>
-      <div class="num text-3xl font-bold text-warn-700 mt-0.5">
-        {{ formatPaise(outstanding, { showDecimal: false }) }}
+      <div class="flex items-baseline min-w-0 mt-0.5">
+        <div class="num flex-1 min-w-0 text-[clamp(1.25rem,4.5vw,1.875rem)] font-bold text-warn-700">
+          {{ formatPaise(outstanding, { showDecimal: false }) }}
+        </div>
       </div>
     </div>
 

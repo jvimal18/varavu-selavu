@@ -4,12 +4,14 @@ import { useAccounts, type Account } from '~/composables/useAccounts'
 import { useTransactions } from '~/composables/useTransactions'
 import { useAccountBalances } from '~/composables/useAccountBalances'
 import { useDataVersion } from '~/composables/useDataVersion'
+import { useUserSettings } from '~/composables/useUserSettings'
 import { formatPaise, formatPaiseCompact } from '~/utils/money'
 
 const { accounts, fetchAll: fetchAccounts, archive } = useAccounts()
-const { transactions, fetchAll: fetchTxns } = useTransactions()
+const { transactions, fetchAll: fetchTxns, initQuickAddForm, quickAddForm } = useTransactions()
 const { balances, netWorth, balanceFor } = useAccountBalances()
 const { version } = useDataVersion()
+const { settings: userSettings } = useUserSettings()
 
 const showForm = ref(false)
 const editing = ref<Account | null>(null)
@@ -36,9 +38,11 @@ const creditCards = computed(() =>
 const investmentAccounts = computed(() =>
   accounts.value.filter((a) => INVESTMENT_TYPES.includes(a.type) && !a.archived)
 )
-const primary = computed(() =>
-  bankAccounts.value.find((a) => a.type === 'bank') || bankAccounts.value[0]
-)
+const primary = computed(() => {
+  const p = userSettings.value.primaryAccountId
+  const fromSettings = p ? bankAccounts.value.find((a) => a.id === p) : undefined
+  return fromSettings || bankAccounts.value.find((a) => a.type === 'bank') || bankAccounts.value[0] || null
+})
 
 const totalBank = computed(() =>
   bankAccounts.value.reduce((s, a) => s + (balances.value.get(a.id) || 0), 0)
@@ -68,8 +72,9 @@ function onPayCard(a: Account) {
   quickAddDefaults.value = { type: 'transfer', toAccountId: a.id }
   showQuickAdd.value = true
 }
-function onAddExpense(a: Account) {
-  quickAddDefaults.value = { type: 'expense' }
+function onAddExpense() {
+  initQuickAddForm()
+  quickAddDefaults.value = { type: 'expense', accountId: quickAddForm.value.accountId || undefined }
   showQuickAdd.value = true
 }
 function onQuickAddSaved() {
@@ -283,6 +288,7 @@ function onQuickAddSaved() {
     <QuickAddModal
       v-model="showQuickAdd"
       :default-type="quickAddDefaults.type"
+      :default-account-id="quickAddDefaults.accountId"
       :default-to-account-id="quickAddDefaults.toAccountId"
       @saved="onQuickAddSaved"
     />

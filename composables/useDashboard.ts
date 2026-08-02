@@ -17,9 +17,10 @@ export interface DashboardData {
   netWorth: number
   periodIncome: number
   periodExpense: number
-  periodSavingsRate: number
+  periodSavingsAmount: number
   period: DashboardPeriod
-  monthBudget: number | null
+  monthBudget: number
+  monthBudgetSet: boolean
   topCategories: Array<{ categoryId: string; name: string; color: string; amount: number }>
   recentTransactions: Transaction[]
   accounts: Array<{

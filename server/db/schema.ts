@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
 
 // =====================================================
 // USERS
@@ -79,6 +80,16 @@ export const transactions = sqliteTable(
 )
 
 // =====================================================
+// USER SETTINGS
+// =====================================================
+export const userSettings = sqliteTable('user_settings', {
+  userId: text('user_id').primaryKey().references(() => users.id),              // FK users.id; one row per user
+  primaryAccountId: text('primary_account_id').references(() => accounts.id),   // FK accounts.id; null = not set
+  monthlyBudgetPaise: integer('monthly_budget_paise'),                          // paise; null = not set
+  updatedAt: integer('updated_at').notNull().default(sql`(unixepoch() * 1000)`), // unix ms
+})
+
+// =====================================================
 // INFERRED TYPES
 // =====================================================
 export type User = typeof users.$inferSelect
@@ -89,3 +100,5 @@ export type Category = typeof categories.$inferSelect
 export type NewCategory = typeof categories.$inferInsert
 export type Transaction = typeof transactions.$inferSelect
 export type NewTransaction = typeof transactions.$inferInsert
+export type UserSettings = typeof userSettings.$inferSelect
+export type NewUserSettings = typeof userSettings.$inferInsert

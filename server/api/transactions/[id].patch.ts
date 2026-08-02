@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { defineEventHandler, readBody, getRouterParam, createError } from 'h3'
 import { useDb, schema } from '~~/server/db/client'
 import { eq } from 'drizzle-orm'
+import { requireUser } from '~~/server/utils/auth'
 
 const Body = z.object({
   type: z.enum(['expense', 'income', 'transfer', 'interest']).optional(),
@@ -20,6 +21,7 @@ const Body = z.object({
 })
 
 export default defineEventHandler(async (event) => {
+  await requireUser(event)
   const id = getRouterParam(event, 'id')
   if (!id) throw createError({ statusCode: 400, statusMessage: 'Transaction id required' })
   const parsed = Body.safeParse(await readBody(event))

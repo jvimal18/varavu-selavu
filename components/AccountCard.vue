@@ -2,8 +2,16 @@
 import type { Account } from '~/composables/useAccounts'
 import { formatPaise, formatPaiseCompact } from '~/utils/money'
 import { computed } from 'vue'
+import { useUserSettings } from '~/composables/useUserSettings'
 
 const props = defineProps<{ account: Account }>()
+
+const { settings, pending: settingsPending, setPrimaryAccount } = useUserSettings()
+const isPrimary = computed(() => settings.value.primaryAccountId === props.account.id)
+
+async function setPrimary() {
+  await setPrimaryAccount(props.account.id)
+}
 
 const { balanceFor } = useAccountBalances()
 const currentBalance = computed(() => balanceFor(props.account.id))
@@ -42,10 +50,30 @@ const dueDateLabel = computed(() => {
           </div>
         </div>
       </div>
+      <div class="flex-shrink-0">
+        <span
+          v-if="isPrimary"
+          class="inline-flex items-center gap-1 text-[10px] font-semibold bg-success-50 text-success-700 px-2 py-0.5 rounded-full uppercase tracking-wider"
+        >
+          <Icon name="lucide:star" size="10" />
+          Primary
+        </span>
+        <button
+          v-else
+          type="button"
+          :disabled="settingsPending"
+          class="text-[10px] font-semibold text-terra-700 hover:bg-terra-50 px-2 py-0.5 rounded-full transition-colors disabled:opacity-50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          @click.stop.prevent="setPrimary"
+        >
+          {{ settingsPending ? 'Saving…' : 'Set as primary' }}
+        </button>
+      </div>
     </div>
 
-    <div class="num text-2xl font-bold" :class="isCreditCard ? 'text-warn-700' : 'text-ink-900'">
-      {{ formatPaise(currentBalance, { showDecimal: false }) }}
+    <div class="flex items-baseline min-w-0">
+      <div class="num flex-1 min-w-0 text-[clamp(1.125rem,4.5vw,1.5rem)] font-bold" :class="isCreditCard ? 'text-warn-700' : 'text-ink-900'">
+        {{ formatPaise(currentBalance, { showDecimal: false }) }}
+      </div>
     </div>
     <div class="text-[11px] text-ink-500 mt-0.5">
       {{ isCreditCard ? 'Outstanding' : 'Available balance' }}

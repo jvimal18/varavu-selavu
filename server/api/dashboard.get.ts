@@ -1,13 +1,13 @@
 import { defineEventHandler, getQuery, createError } from 'h3'
 import { useDb, schema } from '~~/server/db/client'
-import { desc } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import { requireUser } from '~~/server/utils/auth'
 import { computeAccountBalances, computeNetWorth } from '~~/composables/useAccountBalances'
 import { format, parseISO } from 'date-fns'
 import { displayMonth } from '~~/utils/dates'
 
 /**
- * Dashboard aggregates — net worth, period income/expense/savings rate,
+ * Dashboard aggregates — net worth, period income/expense/savings amount,
  * top categories, recent transactions, account balances, 6-month cash flow.
  *
  * The "period" is a configurable date range (defaults to the last 30 days)
@@ -44,7 +44,7 @@ type PeriodKey = (typeof PERIODS)[number]
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 export default defineEventHandler(async (event) => {
-  await requireUser(event)
+  const user = await requireUser(event)
   const db = useDb()
 
   const query = getQuery(event)
@@ -100,7 +100,7 @@ export default defineEventHandler(async (event) => {
   const periodTxns = transactions.filter(inRange)
   const periodIncome = periodTxns.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
   const periodExpense = periodTxns.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
-  const periodSavingsRate = periodIncome > 0 ? ((periodIncome - periodExpense) / periodIncome) * 100 : 0
+  const periodSavingsAmount = periodIncome - periodExpense // paise; can be negative
 
   // Top 5 categories by period expense
   const catTotals = new Map<string, number>()
@@ -151,14 +151,22 @@ export default defineEventHandler(async (event) => {
     cashFlow.push({ month: monthLabel, income: income / 100, expense: expense / 100 })
   }
 
+  // Per-user monthly budget (paise); 0 when unset. UI gates display on monthBudgetSet.
+  const userSetting = await db.select().from(schema.userSettings)
+    .where(eq(schema.userSettings.userId, user.id))
+    .get()
+  const monthBudget = userSetting?.monthlyBudgetPaise ?? 0
+  const monthBudgetSet = monthBudget > 0
+
   return {
     data: {
       netWorth,
       periodIncome,
       periodExpense,
-      periodSavingsRate,
+      periodSavingsAmount,
       period: { from, to, label: periodLabel },
-      monthBudget: 12000000, // ₹1.2L placeholder; v2 will make it configurable
+      monthBudget,
+      monthBudgetSet,
       topCategories,
       recentTransactions,
       accounts: accountCards,
