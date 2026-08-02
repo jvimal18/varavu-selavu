@@ -112,37 +112,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
     <!-- Main -->
     <div class="flex-1 flex flex-col min-w-0">
-      <header class="bg-cream-100/80 dark:bg-ink-900/80 backdrop-blur border-b border-ink-200 dark:border-ink-700 sticky top-0 z-10 sm:hidden">
-        <div class="px-5 md:px-8 py-4 flex items-center gap-4">
-          <NuxtLink to="/" class="md:hidden flex items-center gap-2">
-            <div class="w-7 h-7 rounded-lg bg-terra-700 flex items-center justify-center">
-              <Icon name="lucide:trending-up" class="text-white" size="14" />
-            </div>
-            <span class="font-bold text-ink-900">VaravuSelavu</span>
-          </NuxtLink>
-          <div class="flex-1" />
-          <NuxtLink
-            to="/settings"
-            class="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full text-ink-700 hover:bg-cream-200 transition-colors dark:text-ink-300 dark:hover:bg-ink-800"
-            aria-label="Settings"
-          >
-            <Icon name="lucide:settings" size="20" />
-          </NuxtLink>
-          <ClientOnly>
-            <ThemeToggle class="hidden sm:flex" />
-            <template #fallback>
-              <button
-                type="button"
-                class="hidden sm:inline-flex items-center justify-center w-10 h-10 rounded-full text-ink-700 hover:bg-cream-200 transition-colors"
-                aria-label="Theme"
-              >
-                <Icon name="lucide:sun" size="20" />
-              </button>
-            </template>
-          </ClientOnly>
-        </div>
-      </header>
-
       <main class="flex-1 px-5 md:px-8 py-6 max-w-[1400px] w-full mx-auto pb-28 md:pb-8">
         <slot />
       </main>
