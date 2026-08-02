@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 
 const auth = useAuthStore()
 const route = useRoute()
-const showQuickAdd = ref(false)
+const { opened: showQuickAdd } = useQuickAddModal()
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: 'layout-dashboard' },
@@ -92,6 +92,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <div class="text-sm font-semibold text-ink-900 leading-tight truncate">{{ auth.user?.name || 'Loading…' }}</div>
             <div class="text-[11px] text-ink-500">Active</div>
           </div>
+          <ClientOnly>
+            <ThemeToggle class="flex-shrink-0" />
+            <template #fallback>
+              <span class="w-9 h-9 flex-shrink-0" />
+            </template>
+          </ClientOnly>
           <Icon name="lucide:chevron-right" class="text-ink-400" size="14" />
         </NuxtLink>
         <button
@@ -106,7 +112,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
     <!-- Main -->
     <div class="flex-1 flex flex-col min-w-0">
-      <header class="bg-cream-100/80 dark:bg-ink-900/80 backdrop-blur border-b border-ink-200 dark:border-ink-700 sticky top-0 z-10">
+      <header class="bg-cream-100/80 dark:bg-ink-900/80 backdrop-blur border-b border-ink-200 dark:border-ink-700 sticky top-0 z-10 sm:hidden">
         <div class="px-5 md:px-8 py-4 flex items-center gap-4">
           <NuxtLink to="/" class="md:hidden flex items-center gap-2">
             <div class="w-7 h-7 rounded-lg bg-terra-700 flex items-center justify-center">
@@ -134,14 +140,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               </button>
             </template>
           </ClientOnly>
-          <button
-            @click="showQuickAdd = true"
-            class="btn-primary hidden sm:inline-flex"
-          >
-            <Icon name="lucide:plus" size="14" />
-            Quick add
-            <kbd class="hidden md:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-mono bg-white/20 rounded">/</kbd>
-          </button>
         </div>
       </header>
 

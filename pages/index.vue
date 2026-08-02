@@ -7,6 +7,7 @@ import { greetingForHour } from '~/utils/dates'
 import type { PeriodKey } from '~/composables/useDashboard'
 
 const auth = useAuthStore()
+const { open: openQuickAdd } = useQuickAddModal()
 const { data, loading, period, customRange, fetch } = useDashboard()
 const { version } = useDataVersion()
 const now = new Date()
@@ -51,6 +52,18 @@ const periodLabel = computed(() => data.value?.period.label ?? '')
       <h1 class="text-2xl md:text-3xl font-bold text-ink-900 mt-1">
         {{ greetingForHour(now.getHours()) }}, {{ auth.user?.name || 'there' }}
       </h1>
+    </div>
+
+    <div class="card p-5 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <h2 class="text-base font-semibold text-ink-900">Log your next transaction</h2>
+        <p class="text-sm text-ink-500 mt-0.5">Record income, expense, transfer, or interest</p>
+      </div>
+      <button @click="openQuickAdd" class="btn-primary px-6 py-3 text-base">
+        <Icon name="lucide:plus" size="18" />
+        Add transaction
+        <kbd class="ml-2 hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-white/20 rounded">/</kbd>
+      </button>
     </div>
 
     <div v-if="loading && !data" class="card p-12 text-center">
