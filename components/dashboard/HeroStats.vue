@@ -7,7 +7,6 @@ const props = defineProps<{
   netWorth: number
   periodIncome: number
   periodExpense: number
-  periodSavingsAmount: number
   monthBudget: number
   monthBudgetSet: boolean
   periodLabel: string
@@ -43,7 +42,7 @@ function cancelBudget() {
 </script>
 
 <template>
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+  <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
     <div class="card p-4 md:p-5">
       <div class="label">Net Worth</div>
       <div class="num text-[clamp(1.125rem,3vw,1.5rem)] font-bold text-ink-900 mt-2">₹{{ (netWorth / 100).toLocaleString('en-IN') }}</div>
@@ -104,15 +103,6 @@ function cancelBudget() {
             Cancel
           </button>
         </div>
-      </div>
-    </div>
-    <div class="card p-4 md:p-5">
-      <div class="label">Savings · {{ periodLabel }}</div>
-      <div class="num text-[clamp(1.125rem,3vw,1.5rem)] font-bold mt-2" :class="periodSavingsAmount >= 0 ? 'text-terra-700' : 'text-danger-600'">
-        {{ formatPaiseCompact(periodSavingsAmount) }}
-      </div>
-      <div class="text-[11px] text-ink-500 mt-1.5">
-        {{ periodSavingsAmount >= 0 ? 'Income − expense' : `Overspent by ${formatPaiseCompact(Math.abs(periodSavingsAmount))}` }}
       </div>
     </div>
   </div>

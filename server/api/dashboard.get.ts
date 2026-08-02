@@ -100,8 +100,6 @@ export default defineEventHandler(async (event) => {
   const periodTxns = transactions.filter(inRange)
   const periodIncome = periodTxns.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
   const periodExpense = periodTxns.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
-  const periodSavingsAmount = periodIncome - periodExpense // paise; can be negative
-
   // Top 5 categories by period expense
   const catTotals = new Map<string, number>()
   for (const t of periodTxns.filter((t) => t.type === 'expense')) {
@@ -163,7 +161,6 @@ export default defineEventHandler(async (event) => {
       netWorth,
       periodIncome,
       periodExpense,
-      periodSavingsAmount,
       period: { from, to, label: periodLabel },
       monthBudget,
       monthBudgetSet,

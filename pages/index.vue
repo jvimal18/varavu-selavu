@@ -77,7 +77,6 @@ const periodLabel = computed(() => data.value?.period.label ?? '')
         :net-worth="data.netWorth"
         :period-income="data.periodIncome"
         :period-expense="data.periodExpense"
-        :period-savings-amount="data.periodSavingsAmount"
         :month-budget="data.monthBudget"
         :month-budget-set="data.monthBudgetSet"
         :period-label="data.period.label"

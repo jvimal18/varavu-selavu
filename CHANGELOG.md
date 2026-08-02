@@ -3,6 +3,12 @@
 All notable changes to VaravuSelavu are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/) · This project does not yet use SemVer for the app; release tags follow `vMAJOR.MINOR.PATCH`.
 
+## [v1.2.0] - 2026-08-03
+
+### Changed
+- **Savings tile removed from the dashboard.** The four-card hero strip is now Net Worth · Income · Expense, laid out as a 3-col grid on desktop (`grid-cols-2 lg:grid-cols-3`). The `periodSavingsAmount` field is dropped from the dashboard API, the `useDashboard` type, and the `HeroStats` props; the page no longer passes it. The savings widget was confusing on its own; the same number is implicit in `periodIncome − periodExpense` and can be re-introduced later as a derived card if useful.
+- **App icon unified.** `public/favicon.svg`, `public/icon.svg`, and the generated `public/pwa-192.png` / `public/pwa-512.png` now use the same design as the title-bar logo: a terra-700 (`#C2410C`) rounded square with a white `lucide:trending-up` icon. The previous favicon/PWA artwork was a cream-background "A" monogram. No `nuxt.config.ts` changes were needed — the existing `pwa.manifest.icons` entries point at these paths.
+
 ## [v1.1.3] - 2026-08-03
 
 ### Fixed

@@ -17,7 +17,6 @@ export interface DashboardData {
   netWorth: number
   periodIncome: number
   periodExpense: number
-  periodSavingsAmount: number
   period: DashboardPeriod
   monthBudget: number
   monthBudgetSet: boolean
