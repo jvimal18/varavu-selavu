@@ -25,9 +25,10 @@ const emit = defineEmits<{
 const auth = useAuthStore()
 const { accounts, fetchAll: fetchAccounts } = useAccounts()
 const { categories, roots, fetchAll: fetchCategories } = useCategories()
-const { create, initQuickAddForm, quickAddForm } = useTransactions()
+const { create, update, remove, byId, initQuickAddForm, quickAddForm } = useTransactions()
 const { users, fetchAll: fetchUsers } = useUsers()
 const { settings: userSettings } = useUserSettings()
+const { editingTransactionId } = useQuickAddModal()
 
 const primaryAccountId = computed(() => userSettings.value.primaryAccountId)
 
@@ -79,7 +80,10 @@ onMounted(async () => {
 
 // Reset when modal opens
 watch(() => props.modelValue, async (open) => {
-  if (!open) return
+  if (!open) {
+    editingTransactionId.value = null
+    return
+  }
   // Clear stale state from a previous open; then apply any provided defaults.
   type.value = props.defaultType || 'expense'
   accountId.value = props.defaultAccountId || null
@@ -91,6 +95,22 @@ watch(() => props.modelValue, async (open) => {
   error.value = null
   showCategoryPicker.value = false
   await Promise.all([fetchAccounts(), fetchCategories(), fetchUsers()])
+
+  // Edit mode: prefill from the existing transaction and skip add defaults.
+  if (editingTransactionId.value) {
+    const t = byId(editingTransactionId.value)
+    if (!t) { error.value = 'Transaction not found'; return }
+    type.value = t.type
+    amountStr.value = String(t.amount / 100)
+    date.value = t.date
+    accountId.value = t.accountId
+    toAccountId.value = t.toAccountId
+    categoryId.value = t.categoryId
+    description.value = t.description || ''
+    spentBy.value = t.spentBy
+    return
+  }
+
   initQuickAddForm()
 
   // Interest defaults
@@ -201,6 +221,15 @@ const selectedCategory = computed(() => categories.value.find((c) => c.id === ca
 
 function close() { emit('update:modelValue', false) }
 
+async function onDelete() {
+  if (!editingTransactionId.value) return
+  const t = byId(editingTransactionId.value)
+  if (!t) return
+  if (!confirm('Delete this transaction? This cannot be undone.')) return
+  await remove(t.id)
+  close()
+}
+
 async function save() {
   error.value = null
   if (amountPaise.value <= 0) { error.value = 'Enter an amount'; return }
@@ -226,8 +255,11 @@ async function save() {
     } else {
       payload.categoryId = categoryId.value
     }
-    const t = await create(payload)
-    emit('saved', t)
+    const isEditing = !!editingTransactionId.value
+    const savedTxn = isEditing
+      ? await update(editingTransactionId.value!, payload)
+      : await create(payload)
+    emit('saved', savedTxn)
     close()
   } catch (e: any) {
     error.value = e?.statusMessage || e?.message || 'Failed to save'
@@ -257,6 +289,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 const amountDisplay = computed(() => {
   if (!amountStr.value) return '0'
   return amountStr.value
+})
+
+const saveLabel = computed(() => {
+  if (saving.value) return 'Saving…'
+  if (editingTransactionId.value) return 'Save changes'
+  if (type.value === 'interest') return 'Add interest'
+  if (type.value === 'income') return 'Add income'
+  if (type.value === 'transfer') return 'Transfer'
+  return 'Save expense'
 })
 </script>
 
@@ -430,6 +471,16 @@ const amountDisplay = computed(() => {
 
           <!-- Numeric pad + Save -->
           <div class="bg-white border-t border-ink-200 px-3 py-3 pb-5 sm:pb-3">
+            <div v-if="editingTransactionId" class="mb-2 flex justify-start">
+              <button
+                type="button"
+                @click="onDelete"
+                class="text-xs font-semibold text-danger-700 hover:text-danger-800 inline-flex items-center gap-1.5"
+              >
+                <Icon name="lucide:trash-2" size="13" />
+                Delete transaction
+              </button>
+            </div>
             <div class="grid grid-cols-3 gap-2 mb-3">
               <template v-for="(row, ri) in NUM_KEYS" :key="ri">
                 <button
@@ -459,7 +510,7 @@ const amountDisplay = computed(() => {
                 'text-white disabled:opacity-50'
               ]"
             >
-              {{ saving ? 'Saving…' : (type === 'interest' ? 'Add interest' : type === 'income' ? 'Add income' : type === 'transfer' ? 'Transfer' : 'Save expense') }}
+              {{ saveLabel }}
             </button>
             <p class="text-[10px] text-ink-400 text-center mt-1.5 hidden sm:block">
               Press <kbd class="px-1 bg-cream-100 border border-ink-200 rounded">⌘ Enter</kbd> to save · <kbd class="px-1 bg-cream-100 border border-ink-200 rounded">Esc</kbd> to close

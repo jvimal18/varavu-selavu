@@ -4,6 +4,7 @@ import type { Transaction } from '~/composables/useTransactions'
 import { useCategories } from '~/composables/useCategories'
 import { useAccounts } from '~/composables/useAccounts'
 import { useUsers } from '~/composables/useUsers'
+import { useQuickAddModal } from '~/composables/useQuickAddModal'
 import { formatSigned } from '~/utils/money'
 import { displayShortDate } from '~/utils/dates'
 
@@ -33,17 +34,20 @@ const amountClass = computed(() => {
   return 'text-ink-900'
 })
 
-function editTransaction(e: MouseEvent) {
-  e.stopPropagation()
-  e.preventDefault()
-  navigateTo(`/transactions/${props.transaction.id}`)
+const { openEdit } = useQuickAddModal()
+function onRowActivate() {
+  openEdit(props.transaction.id)
 }
 </script>
 
 <template>
-  <NuxtLink
-    :to="`/transactions/${transaction.id}`"
-    class="row-hover -mx-2 px-2 py-2 rounded-lg flex items-center gap-3 group"
+  <div
+    role="button"
+    tabindex="0"
+    class="row-hover -mx-2 px-2 py-2 rounded-lg flex items-center gap-3 group cursor-pointer"
+    @click="onRowActivate"
+    @keydown.enter.prevent="onRowActivate"
+    @keydown.space.prevent="onRowActivate"
   >
     <!-- Category / transfer icon -->
     <div
@@ -108,14 +112,5 @@ function editTransaction(e: MouseEvent) {
         {{ formatSigned(transaction.amount, transaction.type) }}
       </div>
     </div>
-
-    <button
-      type="button"
-      title="Edit transaction"
-      class="flex-shrink-0 p-1.5 rounded-md text-ink-500 hover:text-ink-900 hover:bg-cream-200 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-      @click="editTransaction"
-    >
-      <Icon name="lucide:pencil" size="18" />
-    </button>
-  </NuxtLink>
+  </div>
 </template>
