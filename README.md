@@ -27,7 +27,7 @@ pnpm dev                            # http://localhost:3000
 
 ```bash
 cp scripts/env.example scripts/.env   # edit values (host, user, paths)
-./scripts/setup-pi.sh                 # provisions Node 20, pnpm, rclone, budget user, dirs
+./scripts/setup-pi.sh                 # provisions Node 24, pnpm, rclone, budget user, dirs
 ```
 
 Then configure Google Drive backups (interactive, needs a browser):
@@ -65,16 +65,27 @@ to `gdrive:budget-tracker-backups/` with a **30-day** retention
 **Manual export:**
 
 ```bash
-./scripts/export.sh
+./scripts/export.sh    # generate JSON on the Pi + push to Google Drive (rclone)
+pnpm export            # JSON only: node scripts/export.mjs [output-file]
 ```
 
-> The Pi-side generator (`scripts/export.mjs`) is **not implemented yet** —
-> `export.sh` currently prints a warning and exits 0. See the TODO in
-> `package.json` (`export:json` → `server/scripts/export.ts`).
+- `scripts/export.sh` SSHes to the Pi (or runs locally when invoked by the
+  systemd timer) and generates the snapshot with `scripts/export.mjs`, then
+  pushes it to Drive via rclone with 30-day retention.
+- `pnpm export` (i.e. `node scripts/export.mjs`) writes a full snapshot of all
+  4 tables (users, accounts, categories, transactions) to
+  `exports/budget-YYYY-MM-DD.json` (or the path given as an argument). DB path
+  comes from `$NUXT_DB_PATH`, else `./budget.db`.
 
-**Restore:** copy a JSON export back and import it. No importer exists yet —
-either implement `scripts/import.ts` (mirror of the export shape) or restore
-the SQLite file itself by copying a backup of `budget.db` (TODO).
+**Restore:** import a JSON snapshot back into the DB with `scripts/import.ts`:
+
+```bash
+pnpm import <snapshot.json>
+```
+
+It wipes the 4 tables and re-inserts from the snapshot inside a single
+transaction (requires typing `YES` to confirm). Alternatively, restore the
+SQLite file itself by copying a backup of `budget.db`.
 
 ## 5. Troubleshooting
 

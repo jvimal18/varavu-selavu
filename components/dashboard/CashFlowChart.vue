@@ -75,7 +75,7 @@ const chartOption = computed(() => {
   return {
     animation: !reduced,
     animationDuration: reduced ? 0 : 300,
-    animationEasing: 'cubicOut',
+    animationEasing: 'cubicOut' as const,
     grid: {
       left: 12,
       right: 12,

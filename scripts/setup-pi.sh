@@ -3,7 +3,7 @@
 #
 # Runs from the dev machine and configures a fresh Pi (Raspberry Pi OS
 # Bookworm 64-bit) to host the budget tracker:
-#   - Node 20 (NodeSource) + pnpm + rclone + build tools
+#   - Node 24 (NodeSource) + pnpm + rclone + build tools
 #   - system user "budget" (no shell, no home)
 #   - app directories under ${PI_APP_DIR}, owned by budget
 #
@@ -39,15 +39,15 @@ echo "==> Checking SSH connectivity..."
 ssh ${PI_SSH_OPTS} -o ConnectTimeout=5 "${SSH_TARGET}" true
 echo "    OK — ${SSH_TARGET} reachable."
 
-# 2) Node 20 (skip if an existing install is already >= 20)
-echo "==> Ensuring Node >= 20..."
+# 2) Node 24 (skip if an existing install is already >= 24)
+echo "==> Ensuring Node >= 24..."
 if ssh ${PI_SSH_OPTS} "${SSH_TARGET}" \
-  "command -v node >/dev/null 2>&1 && [ \$(node --version | sed 's/^v//; s/\\..*//') -ge 20 ]"; then
-  echo "    Node >= 20 already installed. Skipping."
+  "command -v node >/dev/null 2>&1 && [ \$(node --version | sed 's/^v//; s/\\..*//') -ge 24 ]"; then
+  echo "    Node >= 24 already installed. Skipping."
 else
-  echo "    Installing Node 20 via NodeSource..."
+  echo "    Installing Node 24 via NodeSource..."
   ssh ${PI_SSH_OPTS} "${SSH_TARGET}" \
-    "curl -fsSL https://deb.nodesource.com/setup_20.x | ${PI_SUDO} -E bash - && ${PI_SUDO} apt install -y nodejs"
+    "curl -fsSL https://deb.nodesource.com/setup_24.x | ${PI_SUDO} -E bash - && ${PI_SUDO} apt install -y nodejs"
   echo "    Installing build tools (native fallback for better-sqlite3)..."
   ssh ${PI_SSH_OPTS} "${SSH_TARGET}" "${PI_SUDO} apt install -y build-essential python3"
 fi

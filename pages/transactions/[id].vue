@@ -19,7 +19,7 @@ const { users, fetchAll: fetchUsers } = useUsers()
 const { version } = useDataVersion()
 
 const txn = ref<Transaction | null>(null)
-const type = ref<'expense' | 'income' | 'transfer'>('expense')
+const type = ref<'expense' | 'income' | 'transfer' | 'interest'>('expense')
 const amountRupees = ref('0')
 const date = ref(todayISO())
 const accountId = ref<string | null>(null)
@@ -57,7 +57,8 @@ function load() {
 
 const visibleCategories = computed(() => {
   if (type.value === 'transfer') return []
-  return roots(type.value)
+  const t: 'expense' | 'income' = type.value === 'interest' ? 'income' : type.value === 'expense' ? 'expense' : 'income'
+  return roots(t)
 })
 
 async function save() {
@@ -121,15 +122,15 @@ async function onDelete() {
         <label class="label">Type</label>
         <div class="flex bg-cream-200 rounded-xl p-1 mt-1.5">
           <button
-            v-for="t in (['expense', 'income', 'transfer'] as const)"
+            v-for="t in (['expense', 'income', 'transfer', 'interest'] as const)"
             :key="t"
             type="button"
             @click="type = t"
             :class="[
-              'flex-1 py-2 text-sm font-semibold rounded-lg transition-colors',
+              'flex-1 py-2 text-sm font-semibold rounded-lg transition-colors inline-flex items-center justify-center gap-1.5',
               type === t ? 'bg-white text-ink-900 shadow-soft' : 'text-ink-500'
             ]"
-          >{{ t[0].toUpperCase() + t.slice(1) }}</button>
+          ><Icon v-if="t === 'interest'" name="lucide:percent" size="14" />{{ t[0].toUpperCase() + t.slice(1) }}</button>
         </div>
       </div>
 
@@ -178,7 +179,7 @@ async function onDelete() {
       </div>
 
       <!-- Person (Spent by / Received by) -->
-      <div v-if="type !== 'transfer'">
+      <div v-if="type !== 'transfer' && type !== 'interest'">
         <label class="label">{{ type === 'income' ? 'Received by' : 'Spent by' }}</label>
         <div class="flex bg-cream-200 rounded-xl p-1 mt-1.5">
           <button

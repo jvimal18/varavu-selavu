@@ -90,7 +90,7 @@ function interestCategoryId() {
   return roots('income')[0]?.id || null
 }
 
-function openQuickAdd(opts: { type?: 'expense' | 'income' | 'transfer' | 'interest'; accountId?: string; toAccountId?: string; categoryId?: string } = {}) {
+function openQuickAdd(opts: { type?: 'expense' | 'income' | 'transfer' | 'interest'; accountId?: string | null; toAccountId?: string | null; categoryId?: string | null } = {}) {
   quickAddDefaults.value = opts
   showQuickAdd.value = true
 }

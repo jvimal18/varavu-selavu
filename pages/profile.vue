@@ -286,7 +286,7 @@ const changeStageIndex = () => {
         </button>
         <button
           v-else
-          @click="auth.logout().then(() => navigateTo({ path: '/setup-pin', query: { userId: auth.user?.id } }))"
+          @click="auth.logout().then(() => { navigateTo({ path: '/setup-pin', query: { userId: auth.user?.id } }) })"
           class="btn-primary"
         >
           <Icon name="lucide:plus" size="14" />
