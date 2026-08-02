@@ -112,25 +112,25 @@ function onQuickAddSaved() {
 
     <template v-else>
       <!-- Summary stats -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div class="card p-4">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div class="card p-4 min-w-0">
           <div class="label">Net worth</div>
-          <div class="num text-xl font-bold text-ink-900 mt-1">₹{{ (netWorth / 100).toLocaleString('en-IN') }}</div>
+          <div class="num text-[clamp(0.95rem,1.8vw,1.15rem)] font-bold text-ink-900 mt-1">₹{{ (netWorth / 100).toLocaleString('en-IN') }}</div>
           <div class="text-[10px] text-ink-500 mt-0.5">Assets − liabilities</div>
         </div>
-        <div class="card p-4">
+        <div class="card p-4 min-w-0">
           <div class="label">Bank & wallets</div>
-          <div class="num text-xl font-bold text-ink-900 mt-1">₹{{ (totalBank / 100).toLocaleString('en-IN') }}</div>
+          <div class="num text-[clamp(0.95rem,1.8vw,1.15rem)] font-bold text-ink-900 mt-1">₹{{ (totalBank / 100).toLocaleString('en-IN') }}</div>
           <div class="text-[10px] text-ink-500 mt-0.5">{{ bankAccounts.length }} {{ bankAccounts.length === 1 ? 'account' : 'accounts' }}</div>
         </div>
-        <div class="card p-4">
+        <div class="card p-4 min-w-0">
           <div class="label">CC outstanding</div>
-          <div class="num text-xl font-bold text-warn-700 mt-1">₹{{ (totalCreditUsed / 100).toLocaleString('en-IN') }}</div>
+          <div class="num text-[clamp(0.95rem,1.8vw,1.15rem)] font-bold text-warn-700 mt-1">₹{{ (totalCreditUsed / 100).toLocaleString('en-IN') }}</div>
           <div class="text-[10px] text-ink-500 mt-0.5">{{ creditCards.length }} {{ creditCards.length === 1 ? 'card' : 'cards' }}</div>
         </div>
-        <div class="card p-4">
+        <div class="card p-4 min-w-0">
           <div class="label">Total available</div>
-          <div class="num text-xl font-bold text-ink-900 mt-1">₹{{ (totalAvailable / 100).toLocaleString('en-IN') }}</div>
+          <div class="num text-[clamp(0.95rem,1.8vw,1.15rem)] font-bold text-ink-900 mt-1">₹{{ (totalAvailable / 100).toLocaleString('en-IN') }}</div>
           <div class="text-[10px] text-ink-500 mt-0.5">CC headroom</div>
         </div>
       </div>

@@ -43,19 +43,19 @@ function cancelBudget() {
 </script>
 
 <template>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
     <div class="card p-4 md:p-5">
       <div class="label">Net Worth</div>
-      <div class="num text-2xl md:text-3xl font-bold text-ink-900 mt-2">₹{{ (netWorth / 100).toLocaleString('en-IN') }}</div>
+      <div class="num text-[clamp(1.125rem,3vw,1.5rem)] font-bold text-ink-900 mt-2">₹{{ (netWorth / 100).toLocaleString('en-IN') }}</div>
       <div class="text-[11px] text-ink-500 mt-1.5">{{ accountsCount }} accounts</div>
     </div>
     <div class="card p-4 md:p-5">
       <div class="label">Income · {{ periodLabel }}</div>
-      <div class="num text-2xl md:text-3xl font-bold text-ink-900 mt-2">₹{{ (periodIncome / 100).toLocaleString('en-IN') }}</div>
+      <div class="num text-[clamp(1.125rem,3vw,1.5rem)] font-bold text-ink-900 mt-2">₹{{ (periodIncome / 100).toLocaleString('en-IN') }}</div>
     </div>
     <div class="card p-4 md:p-5">
       <div class="label">Expense · {{ periodLabel }}</div>
-      <div class="num text-2xl md:text-3xl font-bold text-ink-900 mt-2">₹{{ (periodExpense / 100).toLocaleString('en-IN') }}</div>
+      <div class="num text-[clamp(1.125rem,3vw,1.5rem)] font-bold text-ink-900 mt-2">₹{{ (periodExpense / 100).toLocaleString('en-IN') }}</div>
       <div v-if="monthBudgetSet" class="flex items-center gap-1.5 mt-1.5 text-[11px]">
         <span class="text-ink-500">{{ expenseBudgetPct }}% of {{ formatPaiseCompact(monthBudget) }}</span>
         <div class="flex-1 h-1 bg-cream-200 rounded-full overflow-hidden">
@@ -108,7 +108,7 @@ function cancelBudget() {
     </div>
     <div class="card p-4 md:p-5">
       <div class="label">Savings · {{ periodLabel }}</div>
-      <div class="num text-2xl md:text-3xl font-bold mt-2" :class="periodSavingsAmount >= 0 ? 'text-terra-700' : 'text-danger-600'">
+      <div class="num text-[clamp(1.125rem,3vw,1.5rem)] font-bold mt-2" :class="periodSavingsAmount >= 0 ? 'text-terra-700' : 'text-danger-600'">
         {{ formatPaiseCompact(periodSavingsAmount) }}
       </div>
       <div class="text-[11px] text-ink-500 mt-1.5">
