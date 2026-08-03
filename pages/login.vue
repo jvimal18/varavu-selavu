@@ -97,6 +97,19 @@ function handleKeydown(e: KeyboardEvent) {
   else if (e.key === 'Enter') submit()
 }
 
+/**
+ * Live countdown formatter. Shows M:SS for >= 60s, "Ns" for < 60s.
+ * Updates every second via the existing useIntervalFn ticker above.
+ */
+function formatCountdown(s: number): string {
+  if (s >= 60) {
+    const m = Math.floor(s / 60)
+    const sec = s % 60
+    return `${m}:${sec.toString().padStart(2, '0')}`
+  }
+  return `${s}s`
+}
+
 onMounted(() => window.addEventListener('keydown', handleKeydown))
 onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 </script>
@@ -164,8 +177,8 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 
         <div v-if="error" class="mb-3 px-3 py-2 rounded-lg bg-danger-50 text-danger-700 text-xs text-center font-medium">
           <div>{{ error }}</div>
-          <div v-if="cooldownSeconds > 0" class="mt-1 num font-semibold">
-            Try again in {{ cooldownSeconds }} second{{ cooldownSeconds === 1 ? '' : 's' }}
+          <div v-if="cooldownSeconds > 0" class="mt-1.5 num font-semibold text-danger-800">
+            Try again in {{ formatCountdown(cooldownSeconds) }}
           </div>
         </div>
 

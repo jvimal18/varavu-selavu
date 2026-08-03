@@ -40,10 +40,20 @@ export const useAuthStore = defineStore('auth', {
         this.user = { ...data.user, hasPin: true }
         return { ok: true as const }
       } catch (e: any) {
-        const retryAfter = Number(e?.data?.retryAfter)
+        // Server response body shape (from createError in login.post.ts):
+        //   { statusCode, statusMessage, message, data?: { retryAfter } }
+        // ofetch attaches the parsed body to `e.data`, so the user-friendly
+        // text lives at e.data.message and the lockout seconds at
+        // e.data.data.retryAfter. We deliberately avoid e.statusMessage
+        // and e.message because they expose the internal URL/method or
+        // get overridden by intermediaries with the standard reason phrase.
+        const message = e?.data?.message
+        const retryAfter = Number(e?.data?.data?.retryAfter)
         return {
           ok: false as const,
-          error: e?.statusMessage || e?.message || 'Login failed',
+          error: typeof message === 'string' && message.length > 0
+            ? message
+            : 'Login failed. Please try again.',
           retryAfter: Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
         }
       } finally {

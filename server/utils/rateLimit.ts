@@ -70,7 +70,21 @@ export function getClientIp(event: H3Event): string {
 
 export type CheckResult =
   | { ok: true }
-  | { ok: false; retryAfter: number; message: string }
+  | { ok: false; retryAfter: number; message: string; attempts?: number }
+
+/**
+ * Human-friendly retry-time formatter for rate-limit messages.
+ * <60s  -> "45 seconds"
+ * 60s   -> "1 minute"
+ * 90s   -> "2 minutes" (rounded up)
+ * 300s  -> "5 minutes"
+ */
+export function formatRetryAfter(seconds: number): string {
+  const s = Math.max(1, Math.ceil(seconds))
+  if (s < 60) return `${s} second${s === 1 ? '' : 's'}`
+  const m = Math.ceil(s / 60)
+  return `${m} minute${m === 1 ? '' : 's'}`
+}
 
 function ceilDiv(a: number, b: number): number {
   return Math.ceil(a / 1000)
@@ -97,7 +111,8 @@ export function checkLoginAllowed(event: H3Event, accountKey: string): CheckResu
     return {
       ok: false,
       retryAfter,
-      message: `Too many login attempts. Try again in ${retryAfter} seconds.`,
+      attempts: throttleCount + 1,
+      message: `Too many login attempts from this device. Please wait ${formatRetryAfter(retryAfter)} before trying again.`,
     }
   }
 
@@ -110,7 +125,8 @@ export function checkLoginAllowed(event: H3Event, accountKey: string): CheckResu
     return {
       ok: false,
       retryAfter,
-      message: `Too many failed login attempts. Try again in ${retryAfter} seconds.`,
+      attempts: failedCount,
+      message: `Too many failed attempts from this device (${failedCount}). Try again in ${formatRetryAfter(retryAfter)}.`,
     }
   }
 
@@ -118,10 +134,12 @@ export function checkLoginAllowed(event: H3Event, accountKey: string): CheckResu
   const cooldownUntil = accountCooldownUntil.get(accountKey)
   if (cooldownUntil && cooldownUntil > now) {
     const retryAfter = Math.max(1, Math.ceil((cooldownUntil - now) / 1000))
+    const attempts = accountConsecutiveFails.get(accountKey) ?? 0
     return {
       ok: false,
       retryAfter,
-      message: `Too many failed attempts for this account. Try again in ${retryAfter} seconds.`,
+      attempts,
+      message: `Too many failed attempts for this account (${attempts}). Try again in ${formatRetryAfter(retryAfter)}.`,
     }
   }
 
