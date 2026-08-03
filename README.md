@@ -9,7 +9,7 @@ exposed publicly via Tailscale Funnel.
 ## 1. Dev machine setup (one-time)
 
 On Linux Mint (or similar), install **Node 22 via nvm** — `better-sqlite3@11` has
-no prebuilt binary for Node 18 (see DECISIONS.md gotchas):
+no prebuilt binary for Node 18:
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
@@ -95,7 +95,7 @@ SQLite file itself by copying a backup of `budget.db`.
 | DB locked | Usually better-sqlite3 being hammered — `sudo systemctl restart budget-tracker` |
 | Deploy fails on rsync/ssh | Check `ssh vimal@192.168.0.224` works; confirm `scripts/.env` host/user |
 | App OK but rclone push fails | Run `sudo -u budget RCLONE_CONFIG=/var/lib/budget-tracker/rclone.conf rclone lsd gdrive:` on the Pi (see docs/rclone-setup.md) |
-| Forgot PIN | No recovery flow yet (DECISIONS.md §8 Q10) — requires reseeding the DB (nuclear option) |
+| Forgot PIN | No recovery flow yet — requires reseeding the DB (nuclear option) |
 
 ## 6. Tailscale Funnel (one-time, on the Pi)
 
@@ -109,5 +109,4 @@ Do not configure any other proxy — Funnel already terminates TLS.
 
 ---
 
-See **DECISIONS.md** for the full project bible (decisions, schema, runbook
-history).
+See **CHANGELOG.md** for the release history and design notes per version.

@@ -143,15 +143,22 @@ function cancelBudget() {
       <span v-if="error" class="text-xs text-danger-600 pb-2">{{ error }}</span>
     </div>
 
-    <!-- Period secondary stats: Income / Expense + monthly budget widget.
+    <!-- Period secondary stats: Income / Total Spent / Expense + monthly budget widget.
          On mobile (<sm) the periodLabel is dropped from the labels (it's
          already shown by the chips above) to keep the row inside the card;
          the periodLabel returns from sm up. The budget editor wraps to a
-         new line on narrow viewports. -->
+         new line on narrow viewports. "Total Spent" mirrors periodExpense
+         (transfers are excluded, so this is the real period outflow) but
+         is surfaced as its own tile to make the period-total explicit. -->
     <div class="border-t border-ink-100 pt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
       <div class="flex items-baseline gap-2 min-w-0 flex-shrink">
         <span class="label">Income<span class="hidden sm:inline"> · {{ periodLabel }}</span></span>
         <span class="num text-sm font-bold text-ink-900 whitespace-nowrap">₹{{ Math.round(periodIncome / 100).toLocaleString('en-IN') }}</span>
+      </div>
+
+      <div class="flex items-baseline gap-2 min-w-0 flex-shrink">
+        <span class="label">Total spent<span class="hidden sm:inline"> · {{ periodLabel }}</span></span>
+        <span class="num text-sm font-bold text-ink-900 whitespace-nowrap">₹{{ Math.round(periodExpense / 100).toLocaleString('en-IN') }}</span>
       </div>
 
       <div class="flex flex-col gap-1 min-w-0 flex-1 basis-full sm:basis-auto">

@@ -6,7 +6,6 @@ import { useAccounts } from '~/composables/useAccounts'
 import { useUsers } from '~/composables/useUsers'
 import { useQuickAddModal } from '~/composables/useQuickAddModal'
 import { formatSigned } from '~/utils/money'
-import { displayShortDate } from '~/utils/dates'
 
 const props = defineProps<{ transaction: Transaction; compact?: boolean }>()
 
@@ -89,15 +88,7 @@ function onRowActivate() {
         <span v-if="!compact">{{ category?.name || (isInterest ? 'Interest' : 'Transfer') }}</span>
         <span v-if="!compact" class="text-ink-300">·</span>
         <span class="truncate">{{ accountLabel }}</span>
-        <template v-if="!compact">
-          <span class="text-ink-300 sm:hidden">·</span>
-          <span class="sm:hidden">{{ displayShortDate(transaction.date) }}</span>
-        </template>
       </div>
-    </div>
-
-    <div v-if="!compact" class="hidden sm:block w-20 flex-shrink-0 text-right text-[11px] text-ink-500">
-      {{ displayShortDate(transaction.date) }}
     </div>
 
     <div class="flex items-center justify-end gap-2.5 flex-shrink-0">
