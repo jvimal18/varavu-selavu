@@ -40,7 +40,12 @@ export const useAuthStore = defineStore('auth', {
         this.user = { ...data.user, hasPin: true }
         return { ok: true as const }
       } catch (e: any) {
-        return { ok: false as const, error: e?.statusMessage || e?.message || 'Login failed' }
+        const retryAfter = Number(e?.data?.retryAfter)
+        return {
+          ok: false as const,
+          error: e?.statusMessage || e?.message || 'Login failed',
+          retryAfter: Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+        }
       } finally {
         this.loading = false
       }

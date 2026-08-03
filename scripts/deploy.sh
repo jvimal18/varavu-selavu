@@ -75,14 +75,19 @@ echo "==> Syncing systemd units ..."
 rsync -avz "${RSYNC_PATH[@]}" \
   systemd/ "${SSH_TARGET}:/tmp/budget-systemd/"
 
-# 7) remote: prod install + install units + reload + restart
+# 6b) sync fail2ban filter + jail (read-only; the Pi copies them in step 7)
+echo "==> Syncing fail2ban configs ..."
+rsync -avz "${RSYNC_PATH[@]}" \
+  fail2ban/ "${SSH_TARGET}:/tmp/budget-fail2ban/"
+
+# 7) remote: prod install + install units + reload + restart + configure fail2ban
 #    Native module fix: better-sqlite3 is built for the dev machine's arch and
 #    shipped inside .output/. After pnpm install on the Pi (which downloads the
 #    correct prebuild), copy that binary over the bundled one so the server
 #    doesn't die with ERR_DLOPEN_FAILED on ARM.
 #    Migrations + seed run via scripts/migrate.mjs (idempotent) as the 'budget'
 #    user so budget.db stays owned by the service user.
-echo "==> Installing prod deps + fixing native module + migrating + restarting on the Pi..."
+echo "==> Installing prod deps + fixing native module + migrating + restarting + configuring fail2ban on the Pi..."
 ssh ${PI_SSH_OPTS} "${SSH_TARGET}" \
   "cd ${PI_APP_DIR} && \
    ${PI_SUDO} pnpm install --prod --frozen-lockfile && \
@@ -95,7 +100,12 @@ ssh ${PI_SSH_OPTS} "${SSH_TARGET}" \
    ${PI_SUDO} cp /tmp/budget-systemd/*.service /tmp/budget-systemd/*.timer /etc/systemd/system/ && \
    ${PI_SUDO} systemctl daemon-reload && \
    (${PI_SUDO} systemctl enable budget-tracker >/dev/null 2>&1 || true) && \
-   ${PI_SUDO} systemctl restart budget-tracker"
+   ${PI_SUDO} systemctl restart budget-tracker && \
+   (command -v fail2ban-server >/dev/null 2>&1 || (${PI_SUDO} apt-get update && ${PI_SUDO} apt-get install -y fail2ban)) && \
+   ${PI_SUDO} install -m 644 /tmp/budget-fail2ban/budget-auth.conf /etc/fail2ban/filter.d/budget-auth.conf && \
+   ${PI_SUDO} install -m 644 /tmp/budget-fail2ban/jail-budget-auth.conf /etc/fail2ban/jail.d/budget-tracker-auth.conf && \
+   (${PI_SUDO} systemctl enable fail2ban >/dev/null 2>&1 || true) && \
+   ${PI_SUDO} systemctl restart fail2ban"
 
 # 8) status — informational only, don't fail the deploy on a degraded state
 echo "==> Service status:"

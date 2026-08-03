@@ -93,6 +93,16 @@ const periodLabel = computed(() => data.value?.period.label ?? '')
         </ClientOnly>
       </div>
 
+      <div class="mb-5">
+        <ClientOnly>
+          <DashboardDailySpendsChart
+            :data="data.dailySpends"
+            :period-label="data.period.label"
+            height="300px"
+          />
+        </ClientOnly>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <DashboardTopCategories :categories="data.topCategories" :month="data.period.label" />
         <DashboardRecentTransactions :transactions="data.recentTransactions" />

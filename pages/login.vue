@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useIntervalFn } from '@vueuse/core'
 import { useAuthStore } from '~/stores/auth'
 
 definePageMeta({ layout: 'auth' })
@@ -12,6 +13,20 @@ const selectedUserId = ref<string | null>(null)
 const pin = ref('')
 const error = ref<string | null>(null)
 const loading = ref(false)
+const cooldownSeconds = ref(0) // > 0 means a 429 cooldown is active
+
+const { resume: startTicker, pause: stopTicker } = useIntervalFn(
+  () => {
+    if (cooldownSeconds.value > 0) {
+      cooldownSeconds.value -= 1
+    }
+    if (cooldownSeconds.value <= 0) {
+      stopTicker()
+    }
+  },
+  1000,
+  { immediate: false }
+)
 
 onMounted(async () => {
   const data = await $fetch<{ users: PublicUser[] }>('/api/auth/users')
@@ -23,6 +38,7 @@ onMounted(async () => {
 const selectedUser = computed(() => users.value.find((u) => u.id === selectedUserId.value) || null)
 
 function pressKey(digit: string) {
+  if (cooldownSeconds.value > 0) return
   if (pin.value.length >= 6) return
   if (digit === 'del') { pin.value = pin.value.slice(0, -1); return }
   pin.value += digit
@@ -30,6 +46,7 @@ function pressKey(digit: string) {
 
 async function submit() {
   if (!selectedUserId.value) return
+  if (cooldownSeconds.value > 0) return
   if (selectedUser.value && !selectedUser.value.hasPin) {
     // Send to setup-pin with prefilled user
     return navigateTo({ path: '/setup-pin', query: { userId: selectedUserId.value } })
@@ -47,8 +64,24 @@ async function submit() {
   } else {
     error.value = result.error
     pin.value = ''
+    if (result.retryAfter) {
+      cooldownSeconds.value = result.retryAfter
+      startTicker()
+    }
   }
 }
+
+// When the countdown finishes, clear the error so the form is fully usable again.
+watch(cooldownSeconds, (s) => {
+  if (s <= 0) {
+    stopTicker()
+    error.value = null
+  }
+})
+
+onUnmounted(() => {
+  stopTicker()
+})
 
 const keys = [
   ['1', '2', '3'],
@@ -58,6 +91,7 @@ const keys = [
 ]
 
 function handleKeydown(e: KeyboardEvent) {
+  if (cooldownSeconds.value > 0) return
   if (e.key >= '0' && e.key <= '9') pressKey(e.key)
   else if (e.key === 'Backspace') pressKey('del')
   else if (e.key === 'Enter') submit()
@@ -129,7 +163,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
         </div>
 
         <div v-if="error" class="mb-3 px-3 py-2 rounded-lg bg-danger-50 text-danger-700 text-xs text-center font-medium">
-          {{ error }}
+          <div>{{ error }}</div>
+          <div v-if="cooldownSeconds > 0" class="mt-1 num font-semibold">
+            Try again in {{ cooldownSeconds }} second{{ cooldownSeconds === 1 ? '' : 's' }}
+          </div>
         </div>
 
         <!-- Numpad -->
@@ -140,7 +177,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
               :key="ki"
               type="button"
               @click="pressKey(k)"
-              :disabled="!k"
+              :disabled="!k || cooldownSeconds > 0"
               :class="[
                 'h-14 rounded-xl text-xl font-semibold transition-colors inline-flex items-center justify-center',
                 k === 'del'
@@ -165,10 +202,12 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
         <button
           type="button"
           @click="submit"
-          :disabled="loading"
+          :disabled="loading || cooldownSeconds > 0"
           class="w-full py-3 rounded-xl bg-terra-700 text-white font-semibold text-sm hover:bg-terra-800 active:translate-y-px transition-colors disabled:opacity-50"
         >
-          {{ loading ? 'Checking…' : (selectedUser.hasPin ? 'Unlock' : 'Set up PIN →') }}
+          <span v-if="cooldownSeconds > 0">Locked — retry in {{ cooldownSeconds }}s</span>
+          <span v-else-if="loading">Checking…</span>
+          <span v-else>{{ selectedUser.hasPin ? 'Unlock' : 'Set up PIN →' }}</span>
         </button>
       </div>
     </div>

@@ -33,6 +33,7 @@ export interface DashboardData {
     last4: string | null
   }>
   cashFlow: Array<{ month: string; income: number; expense: number }>
+  dailySpends: Array<{ date: string; label: string; amount: number }>
 }
 
 export const useDashboard = () => {

@@ -7,7 +7,7 @@ import { format, parseISO } from 'date-fns'
 import { displayMonth } from '~~/utils/dates'
 
 /**
- * Dashboard aggregates — net worth, period income/expense/savings amount,
+ * Dashboard aggregates — net worth, period income/expense, daily spends,
  * top categories, recent transactions, account balances, 6-month cash flow.
  *
  * The "period" is a configurable date range (defaults to the last 30 days)
@@ -119,6 +119,31 @@ export default defineEventHandler(async (event) => {
   // Recent transactions — global recency, no period filter
   const recentTransactions = transactions.slice(0, 10)
 
+  // Daily expense totals for the period, zero-filled and ascending by date.
+  // Iterated in local time so the day boundaries match the user's tz.
+  const dailySpends: Array<{ date: string; label: string; amount: number }> = []
+  {
+    const start = parseISO(from)
+    const end = parseISO(to)
+    const dayMs = 24 * 60 * 60 * 1000
+    const days: string[] = []
+    for (let t = start.getTime(); t <= end.getTime() + 1; t += dayMs) {
+      days.push(localISODate(new Date(t)))
+    }
+    const spendByDate = new Map<string, number>()
+    for (const t of periodTxns) {
+      if (t.type !== 'expense') continue
+      spendByDate.set(t.date, (spendByDate.get(t.date) || 0) + t.amount)
+    }
+    for (const d of days) {
+      dailySpends.push({
+        date: d,
+        label: format(parseISO(d), 'MMM d'),
+        amount: (spendByDate.get(d) || 0) / 100,
+      })
+    }
+  }
+
   // Dynamic balances from opening balance + all transactions
   const balances = computeAccountBalances(accounts, transactions)
   const netWorth = computeNetWorth(accounts, balances)
@@ -168,6 +193,7 @@ export default defineEventHandler(async (event) => {
       recentTransactions,
       accounts: accountCards,
       cashFlow,
+      dailySpends,
     },
   }
 })

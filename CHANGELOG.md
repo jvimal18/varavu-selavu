@@ -3,6 +3,18 @@
 All notable changes to VaravuSelavu are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/) · This project does not yet use SemVer for the app; release tags follow `vMAJOR.MINOR.PATCH`.
 
+## [v1.3.0] - 2026-08-03
+
+### Added
+- **Day-by-day spends chart on the dashboard.** New `DashboardDailySpendsChart` (echarts bars, terra-700) renders every day's expense total for the selected period, zero-filled so the chart is continuous. Card sits below the donut/cash-flow grid and shows the period label as a subtitle. Backend computes the series in `GET /api/dashboard`; `useDashboard` types updated.
+- **Login rate limiting + progressive cooldown.** New `server/utils/rateLimit.ts` enforces, on every login attempt:
+  - Per-IP endpoint throttle: 20 requests/min (all attempts).
+  - Per-IP failed-login block: 5 FAILED attempts per 15 min.
+  - Per-account cooldown on consecutive failures: 5 → 30s, 10 → 1 min, 15+ → 5 min. Reset on success.
+  Limited requests return HTTP 429 with `error.data.retryAfter` (seconds) and a human message. The real client IP is read from `X-Forwarded-For` (first entry), which is trustworthy because the app binds `127.0.0.1:3000` and only Tailscale Funnel can connect. State is in-process; resets on service restart.
+- **Login page cooldown UI.** The login form now reads the 429 `retryAfter`, shows a live "Try again in N seconds" countdown, disables the submit button + numpad + keyboard input while locked, and re-enables automatically when the timer hits zero.
+- **Fail2Ban integration.** Failed logins emit `[auth-fail] ip=<ip> user=<id> reason=...` to the systemd journal. `fail2ban/budget-auth.conf` (filter) and `fail2ban/jail-budget-auth.conf` (journal backend, maxretry 5, findtime 15m, bantime 1h) are shipped and installed by `scripts/deploy.sh` to `/etc/fail2ban/filter.d/` and `/etc/fail2ban/jail.d/`. `fail2ban` is apt-installed on first deploy if missing. Note: with Tailscale Funnel the iptables ban can only block the loopback connection (real client IP enforcement is in-app); the jail still gives the standard logging/blocking structure.
+
 ## [v1.2.0] - 2026-08-03
 
 ### Changed
