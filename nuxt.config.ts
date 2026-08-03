@@ -12,7 +12,12 @@ export default defineNuxtConfig({
   ],
 
   pwa: {
-    registerType: 'autoUpdate',
+    // 'prompt' = new SW installs but waits. Components/UpdatePrompt reads
+    // $pwa.needRefresh and shows a "Refresh to update" toast with a manual
+    // Refresh button. This is the Twitter/Starbucks/Pinterest pattern:
+    // the user controls the moment of activation, so we never wipe
+    // in-progress form input on a surprise reload.
+    registerType: 'prompt',
     manifest: {
       name: 'VaravuSelavu',
       short_name: 'VaravuSelavu',
@@ -40,6 +45,16 @@ export default defineNuxtConfig({
           },
         },
       ],
+      // Don't precache version.json — the OLD app shell needs to always see
+      // the freshly-deployed version, not a precached copy from install time.
+      globIgnores: ['**/version.json'],
+    },
+    client: {
+      // Background-poll for new SW every 1 hour (seconds). Without this, an
+      // installed PWA only learns about updates on the next navigation.
+      // Note: avoid <60s — workbox-window has a 1-min heuristic that treats
+      // rapid re-deploys as "external" and fires the wrong toast.
+      periodicSyncForUpdates: 3600,
     },
     devOptions: {
       // Don't register the dev service worker. Without this, @vite-pwa/nuxt

@@ -5,7 +5,9 @@
   "version": "0.1.0",
   "description": "Personal budget tracker for Vimal & Pavithra",
   "scripts": {
+    "predev": "node scripts/generate-version-json.mjs",
     "dev": "nuxt dev",
+    "prebuild": "node scripts/generate-version-json.mjs",
     "build": "nuxt build",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
