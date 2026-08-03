@@ -71,16 +71,21 @@ const periodLabel = computed(() => data.value?.period.label ?? '')
     </div>
 
     <template v-else-if="data">
-      <DashboardPeriodSelector v-model="periodValue" class="mb-4" />
-
-      <DashboardHeroStats
-        :net-worth="data.netWorth"
+      <DashboardPeriodSelector
+        v-model="periodValue"
         :period-income="data.periodIncome"
         :period-expense="data.periodExpense"
         :month-budget="data.monthBudget"
         :month-budget-set="data.monthBudgetSet"
         :period-label="data.period.label"
-        :accounts-count="data.accounts.length"
+        class="mb-4"
+      />
+
+      <DashboardHeroStats
+        :cash-liquidity="data.cashLiquidity"
+        :credit-liquidity="data.creditLiquidity"
+        :savings-liquidity="data.savingsLiquidity"
+        :accounts="data.accounts"
         class="mb-5"
       />
 

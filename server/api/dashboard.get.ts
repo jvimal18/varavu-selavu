@@ -2,12 +2,17 @@ import { defineEventHandler, getQuery, createError } from 'h3'
 import { useDb, schema } from '~~/server/db/client'
 import { desc, eq } from 'drizzle-orm'
 import { requireUser } from '~~/server/utils/auth'
-import { computeAccountBalances, computeNetWorth } from '~~/composables/useAccountBalances'
+import {
+  computeAccountBalances,
+  computeCashLiquidity,
+  computeCreditLiquidity,
+  computeSavingsLiquidity,
+} from '~~/composables/useAccountBalances'
 import { format, parseISO } from 'date-fns'
 import { displayMonth } from '~~/utils/dates'
 
 /**
- * Dashboard aggregates — net worth, period income/expense, daily spends,
+ * Dashboard aggregates — liquidity position, period income/expense, daily spends,
  * top categories, recent transactions, account balances, 6-month cash flow.
  *
  * The "period" is a configurable date range (defaults to the last 30 days)
@@ -15,8 +20,9 @@ import { displayMonth } from '~~/utils/dates'
  *   ?period=this_month | last_30 | last_90 | custom
  *   ?from=YYYY-MM-DD&to=YYYY-MM-DD  (required when period=custom)
  *
- * Net worth and account balances are always all-time; recentTransactions is
- * global recency. The 6-month cash flow is anchored at the period end.
+ * Liquidity (cashLiquidity / creditLiquidity / savingsLiquidity) and account
+ * balances are always all-time; recentTransactions is global recency. The
+ * 6-month cash flow is anchored at the period end.
  *
  * NOTE: all "today"-relative math uses the user's local timezone via
  * `new Date()` — never `toISOString()`, which drifts by the UTC offset.
@@ -146,7 +152,9 @@ export default defineEventHandler(async (event) => {
 
   // Dynamic balances from opening balance + all transactions
   const balances = computeAccountBalances(accounts, transactions)
-  const netWorth = computeNetWorth(accounts, balances)
+  const cashLiquidity = computeCashLiquidity(accounts, balances)
+  const creditLiquidity = computeCreditLiquidity(accounts, balances)
+  const savingsLiquidity = computeSavingsLiquidity(accounts, balances)
 
   // Account cards with dynamic balance
   const accountCards = accounts.map((a) => ({
@@ -183,7 +191,9 @@ export default defineEventHandler(async (event) => {
 
   return {
     data: {
-      netWorth,
+      cashLiquidity,
+      creditLiquidity,
+      savingsLiquidity,
       periodIncome,
       periodExpense,
       period: { from, to, label: periodLabel },

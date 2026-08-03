@@ -105,6 +105,10 @@ const categories = [
   ['c_fuel', 'Fuel', 'fuel', '#57534E', 'c_transport', 'expense', 1, 51],
   ['c_cab', 'Cab / Auto', 'car-taxi-front', '#57534E', 'c_transport', 'expense', 0, 52],
   ['c_public', 'Public Transit', 'tram-front', '#57534E', 'c_transport', 'expense', 0, 53],
+  // v1.4.0 — new top-level expense categories
+  ['c_loan_repayment', 'Loan Repayment', 'banknote', '#D97706', null, 'expense', 0, 150],
+  ['c_plants_gardening', 'Plants & Gardening', 'leaf', '#16A34A', null, 'expense', 0, 160],
+  ['c_hobbies', 'Hobbies', 'palette', '#6366F1', null, 'expense', 0, 170],
   ['c_salary', 'Salary', 'briefcase', '#15803D', null, 'income', 0, 200],
   ['c_freelance', 'Freelance / Side Hustle', 'laptop', '#15803D', null, 'income', 0, 210],
   ['c_investment_returns', 'Investment Returns', 'trending-up', '#15803D', null, 'income', 0, 220],

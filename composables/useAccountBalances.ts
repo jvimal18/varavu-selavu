@@ -15,9 +15,17 @@
  *   the supported growth path.
  *
  * For net worth: sum of non-CC balances minus sum of CC outstanding.
+ *
+ * Liquidity buckets (v1.4.0) — exclusive type filters, no `other`:
+ * - Cash liquidity:    bank | cash | digital_wallet  (money available to spend)
+ * - Credit liquidity:  credit_card                    (sum of creditLimit - outstanding)
+ * - Savings liquidity: mutual_fund | fixed_deposit | recurring_deposit (RD/FD/MF)
  */
 import type { Account } from '~/composables/useAccounts'
 import type { Transaction } from '~/composables/useTransactions'
+
+const CASH_TYPES = new Set<Account['type']>(['bank', 'cash', 'digital_wallet'])
+const SAVINGS_TYPES = new Set<Account['type']>(['mutual_fund', 'fixed_deposit', 'recurring_deposit'])
 
 export function computeAccountBalances(
   accounts: Account[],
@@ -84,6 +92,48 @@ export function computeNetWorth(
   return net
 }
 
+/** Cash liquidity: sum of balances across bank | cash | digital_wallet accounts. */
+export function computeCashLiquidity(
+  accounts: Account[],
+  balances: Map<string, number>
+): number {
+  let total = 0
+  for (const a of accounts) {
+    if (a.archived) continue
+    if (CASH_TYPES.has(a.type)) total += balances.get(a.id) || 0
+  }
+  return total
+}
+
+/** Credit liquidity: total headroom across credit cards (creditLimit - outstanding). */
+export function computeCreditLiquidity(
+  accounts: Account[],
+  balances: Map<string, number>
+): number {
+  let total = 0
+  for (const a of accounts) {
+    if (a.archived) continue
+    if (a.type !== 'credit_card') continue
+    const outstanding = balances.get(a.id) || 0
+    const limit = a.creditLimit || 0
+    total += Math.max(0, limit - outstanding)
+  }
+  return total
+}
+
+/** Savings liquidity: sum of balances across mutual_fund | fixed_deposit | recurring_deposit. */
+export function computeSavingsLiquidity(
+  accounts: Account[],
+  balances: Map<string, number>
+): number {
+  let total = 0
+  for (const a of accounts) {
+    if (a.archived) continue
+    if (SAVINGS_TYPES.has(a.type)) total += balances.get(a.id) || 0
+  }
+  return total
+}
+
 export const useAccountBalances = () => {
   const { accounts, fetchAll: fetchAccounts } = useAccounts()
   const { transactions, fetchAll: fetchTxns } = useTransactions()
@@ -97,10 +147,32 @@ export const useAccountBalances = () => {
     return computeNetWorth(accounts.value, balances.value)
   })
 
+  const cashLiquidity = computed(() => {
+    return computeCashLiquidity(accounts.value, balances.value)
+  })
+
+  const creditLiquidity = computed(() => {
+    return computeCreditLiquidity(accounts.value, balances.value)
+  })
+
+  const savingsLiquidity = computed(() => {
+    return computeSavingsLiquidity(accounts.value, balances.value)
+  })
+
   function balanceFor(id: string | null | undefined): number {
     if (!id) return 0
     return balances.value.get(id) || 0
   }
 
-  return { balances, netWorth, balanceFor, fetchAccounts, fetchTxns, version }
+  return {
+    balances,
+    netWorth,
+    cashLiquidity,
+    creditLiquidity,
+    savingsLiquidity,
+    balanceFor,
+    fetchAccounts,
+    fetchTxns,
+    version,
+  }
 }

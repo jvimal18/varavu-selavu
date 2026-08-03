@@ -6,6 +6,8 @@ export type { PeriodKey } from '~/composables/useDashboard'
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useUserSettings } from '~/composables/useUserSettings'
+import { formatPaiseCompact, rupeesToPaise } from '~/utils/money'
 import type { PeriodKey } from '~/composables/useDashboard'
 
 export interface PeriodValue {
@@ -22,6 +24,18 @@ const PRESETS: Array<{ key: PeriodKey; label: string }> = [
 ]
 
 const model = defineModel<PeriodValue>({ default: () => ({ period: 'last_30' }) })
+
+const props = defineProps<{
+  periodIncome: number
+  periodExpense: number
+  monthBudget: number
+  monthBudgetSet: boolean
+  periodLabel: string
+}>()
+
+const { setMonthlyBudget, pending: settingsPending } = useUserSettings()
+const editingBudget = ref(false)
+const budgetInput = ref('')
 
 const from = ref(model.value.from ?? '')
 const to = ref(model.value.to ?? '')
@@ -42,6 +56,11 @@ watch(
 
 const isCustom = computed(() => model.value.period === 'custom')
 
+const expenseBudgetPct = computed(() => {
+  if (!props.monthBudget) return 0
+  return Math.round((props.periodExpense / props.monthBudget) * 100)
+})
+
 function select(key: PeriodKey) {
   if (key === model.value.period) return
   error.value = ''
@@ -59,6 +78,24 @@ function apply() {
   }
   error.value = ''
   model.value = { period: 'custom', from: from.value, to: to.value }
+}
+
+function startEditBudget() {
+  editingBudget.value = true
+  budgetInput.value = props.monthBudget ? String(props.monthBudget / 100) : ''
+}
+
+async function saveBudget() {
+  const rupees = parseFloat(budgetInput.value)
+  if (isNaN(rupees) || rupees < 0) return
+  await setMonthlyBudget(rupeesToPaise(rupees))
+  editingBudget.value = false
+  budgetInput.value = ''
+}
+
+function cancelBudget() {
+  editingBudget.value = false
+  budgetInput.value = ''
 }
 </script>
 
@@ -104,6 +141,70 @@ function apply() {
       </label>
       <button type="button" class="btn-primary" @click="apply">Apply</button>
       <span v-if="error" class="text-xs text-danger-600 pb-2">{{ error }}</span>
+    </div>
+
+    <!-- Period secondary stats: Income / Expense + monthly budget widget -->
+    <div class="border-t border-ink-100 pt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div class="flex items-baseline gap-2">
+        <span class="label">Income · {{ periodLabel }}</span>
+        <span class="num text-sm font-bold text-ink-900">₹{{ (periodIncome / 100).toLocaleString('en-IN') }}</span>
+      </div>
+
+      <div class="flex flex-col gap-1 min-w-0 flex-1">
+        <div class="flex items-baseline gap-2 flex-wrap">
+          <span class="label">Expense · {{ periodLabel }}</span>
+          <span class="num text-sm font-bold text-ink-900">₹{{ (periodExpense / 100).toLocaleString('en-IN') }}</span>
+        </div>
+        <div v-if="monthBudgetSet" class="flex items-center gap-1.5 text-[11px]">
+          <span class="text-ink-500">{{ expenseBudgetPct }}% of {{ formatPaiseCompact(monthBudget) }} budget</span>
+          <div class="flex-1 h-1 bg-cream-200 rounded-full overflow-hidden min-w-[4rem]">
+            <div
+              class="h-full rounded-full"
+              :class="expenseBudgetPct > 100 ? 'bg-danger-600' : expenseBudgetPct > 80 ? 'bg-warn-600' : 'bg-terra-700'"
+              :style="{ width: Math.min(100, expenseBudgetPct) + '%' }"
+            />
+          </div>
+        </div>
+        <div v-else class="flex items-center gap-2">
+          <button
+            v-if="!editingBudget"
+            type="button"
+            class="inline-flex items-center gap-1 text-xs font-medium text-terra-700 hover:text-terra-800"
+            @click="startEditBudget"
+          >
+            <Icon name="lucide:plus" size="12" />
+            Set budget
+          </button>
+          <div v-else class="flex items-center gap-2">
+            <div class="relative">
+              <span class="absolute left-2 top-1/2 -translate-y-1/2 text-ink-500 text-xs">₹</span>
+              <input
+                v-model="budgetInput"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="Monthly budget"
+                class="input pl-6 text-xs py-1.5 w-36"
+              />
+            </div>
+            <button
+              type="button"
+              :disabled="settingsPending"
+              class="btn-primary text-xs py-1.5 px-2.5"
+              @click="saveBudget"
+            >
+              {{ settingsPending ? 'Saving…' : 'Save' }}
+            </button>
+            <button
+              type="button"
+              class="btn-ghost text-xs py-1.5 px-2.5"
+              @click="cancelBudget"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>

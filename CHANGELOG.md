@@ -3,6 +3,20 @@
 All notable changes to VaravuSelavu are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/) · This project does not yet use SemVer for the app; release tags follow `vMAJOR.MINOR.PATCH`.
 
+## [v1.4.0] - 2026-08-03
+
+### Changed
+- **Dashboard hero replaced** with three lifetime-position tiles: **Cash Liquidity** (sum across `bank` + `cash` + `digital_wallet`), **Credit Liquidity** (total headroom across `credit_card` accounts, `creditLimit − outstanding`), **Savings** (sum across `mutual_fund` + `fixed_deposit` + `recurring_deposit`, i.e. RD/FD/MF). Each tile shows the value and a short subtitle (account type + count). Computed in `composables/useAccountBalances.ts` (`computeCashLiquidity`, `computeCreditLiquidity`, `computeSavingsLiquidity`) and surfaced via `GET /api/dashboard`. Net Worth is no longer in the dashboard payload; it is still available on the accounts page.
+- **`other` account type is excluded from all three liquidity tiles** (per the "no clarity" decision). Accounts typed `other` are still listed on the accounts page but do not contribute to any of the lifetime tiles. Re-type them to one of the explicit types to include them.
+- **Period-specific stats moved into the period selector** as a compact secondary row at the bottom of the card: period **Income** and period **Expense**, with the **monthly budget widget** (progress bar + `+ Set budget` inline editor) attached to the Expense stat. The period selector still owns period selection; the hero stays focused on the three lifetime tiles.
+- Backend field rename: dashboard payload `netWorth` → three new paise fields `cashLiquidity`, `creditLiquidity`, `savingsLiquidity`. `periodIncome`, `periodExpense`, `monthBudget`, `monthBudgetSet` remain (now consumed by the period selector).
+
+### Added
+- Three new top-level expense categories (seeded idempotently on every deploy; visible in the categories page + transaction form):
+  - **Loan Repayment** (`banknote`, amber `#D97706`)
+  - **Plants & Gardening** (`leaf`, green `#16A34A`)
+  - **Hobbies** (`palette`, indigo `#6366F1`)
+
 ## [v1.3.0] - 2026-08-03
 
 ### Added

@@ -80,6 +80,11 @@ const seedCategories: Array<{
   { id: 'c_cab', name: 'Cab / Auto', icon: 'car-taxi-front', color: '#57534E', parentId: 'c_transport', type: 'expense', isEssential: false, sortOrder: 52 },
   { id: 'c_public', name: 'Public Transit', icon: 'tram-front', color: '#57534E', parentId: 'c_transport', type: 'expense', isEssential: false, sortOrder: 53 },
 
+  // v1.4.0 — new top-level expense categories
+  { id: 'c_loan_repayment', name: 'Loan Repayment', icon: 'banknote', color: '#D97706', parentId: null, type: 'expense', isEssential: false, sortOrder: 150 },
+  { id: 'c_plants_gardening', name: 'Plants & Gardening', icon: 'leaf', color: '#16A34A', parentId: null, type: 'expense', isEssential: false, sortOrder: 160 },
+  { id: 'c_hobbies', name: 'Hobbies', icon: 'palette', color: '#6366F1', parentId: null, type: 'expense', isEssential: false, sortOrder: 170 },
+
   // INCOME
   { id: 'c_salary', name: 'Salary', icon: 'briefcase', color: '#15803D', parentId: null, type: 'income', isEssential: false, sortOrder: 200 },
   { id: 'c_freelance', name: 'Freelance / Side Hustle', icon: 'laptop', color: '#15803D', parentId: null, type: 'income', isEssential: false, sortOrder: 210 },

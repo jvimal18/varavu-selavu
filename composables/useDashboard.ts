@@ -14,7 +14,9 @@ export interface DashboardPeriod {
 }
 
 export interface DashboardData {
-  netWorth: number
+  cashLiquidity: number
+  creditLiquidity: number
+  savingsLiquidity: number
   periodIncome: number
   periodExpense: number
   period: DashboardPeriod
