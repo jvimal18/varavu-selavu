@@ -3,6 +3,17 @@
 All notable changes to VaravuSelavu are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/) · This project does not yet use SemVer for the app; release tags follow `vMAJOR.MINOR.PATCH`.
 
+## [v1.5.0] - 2026-08-03
+
+### Added
+- **PWA update prompt with version-aware changelog (Twitter / Starbucks / Pinterest pattern).** The PWA's `registerType` is now `'prompt'` (was `'autoUpdate'`): the new service worker installs in the background but waits; a small bottom-right toast appears with a manual **Refresh** button. The user controls the moment of activation, so we never wipe in-progress form input on a surprise reload. The toast shows the new version number (mono, terra-700), the first two changelog bullets (clamped to two lines, inline markdown stripped for readability), a primary **Refresh** button that calls `$pwa.updateServiceWorker()` (which posts `SKIP_WAITING`; the new SW activates and the page reloads via the `controlling` event — deliberately no manual `location.reload()`), a secondary **Later** button, a **View full changelog** link, and a generic fallback message if the version fetch fails. It also gets focus on appear, dismisses on Escape, and uses a skeleton state while loading. Mobile: `fixed left-4 right-20 bottom-20` (sits above the bottom nav, clear of the FAB at `right-4 bottom-20`). Desktop: `fixed bottom-4 right-4 max-w-sm`. `z-[60]` (above the modal layer).
+- **`/changelog` page** (the "View full changelog" target). Renders the full `CHANGELOG.md` (imported as a raw string via Vite's `?raw` query), parsed by `utils/changelog.ts` and rendered with a minimal inline-markdown renderer (`**bold**`, `` `code` ``). Newest-first; each version gets a terra-700 mono heading, its date, and its bulleted changes grouped by subsection. The page is reachable directly via the URL and is the canonical release history (the `README.md` closing pointer now points here instead of the removed `DECISIONS.md`).
+- **Version discovery via `public/version.json`.** The OLD app shell can't know the NEW version from its own baked-in `APP_VERSION`, so we ship a tiny static file generated at build time by the new `scripts/generate-version-json.mjs` (wired as `prebuild` + `predev` in `package.json`). The script parses the latest entry of `CHANGELOG.md` into `{ version, date, bullets }`. The new `composables/useAppUpdate.ts` fetches `/version.json` (always network — `cache: 'no-store'` + `Cache-Control: no-cache`; the workbox precache explicitly ignores it via `workbox.globIgnores: ['**/version.json']`), compares to `APP_VERSION`, and exposes `availableUpdate` to the toast. The build pipeline (deploy + dev) regenerates the file on every run, so the developer only needs to update `CHANGELOG.md` and the rest is automatic.
+- **Hourly PWA update check.** `pwa.client.periodicSyncForUpdates: 3600` (seconds) — an installed PWA now learns about a new deploy within an hour even without a navigation, instead of only on the next page load.
+
+### Changed
+- **`pwa.registerType` switched from `'autoUpdate'` to `'prompt'`.** This is a one-way decision: users with the old autoUpdate SW keep the old behaviour until the new SW replaces theirs. The benefit is that the user controls the reload moment, which is the right default for a form-heavy app like a budget tracker.
+
 ## [v1.4.2] - 2026-08-03
 
 ### Added
