@@ -1,6 +1,6 @@
 import { defineEventHandler, getQuery, createError } from 'h3'
 import { useDb, schema } from '~~/server/db/client'
-import { desc, eq } from 'drizzle-orm'
+import { desc, eq, asc, and, gte, lt } from 'drizzle-orm'
 import { requireUser } from '~~/server/utils/auth'
 import {
   computeAccountBalances,
@@ -45,7 +45,7 @@ function localMonthKey(d: Date): string {
   return `${y}-${m}`
 }
 
-const PERIODS = ['this_month', 'last_30', 'last_90', 'custom'] as const
+const PERIODS = ['this_month', 'last_30', 'last_90', 'since_last_salary', 'custom'] as const
 type PeriodKey = (typeof PERIODS)[number]
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
   const db = useDb()
 
   const query = getQuery(event)
-  const period = (query.period ?? 'last_30') as string
+  const period = (query.period ?? 'since_last_salary') as string
   if (!PERIODS.includes(period as PeriodKey)) {
     throw createError({ statusCode: 400, statusMessage: `Invalid period: ${period}` })
   }
@@ -77,6 +77,69 @@ export default defineEventHandler(async (event) => {
     to = localISODate(today)
     if (period === 'this_month') {
       from = localISODate(new Date(today.getFullYear(), today.getMonth(), 1))
+    } else if (period === 'since_last_salary') {
+      // Household-wide: the period starts from the FIRST salary credit of the
+      // current pay cycle. Since the current month's salary is typically
+      // credited in the last week of the previous month, we look for the
+      // first "Salary"-category transaction in the previous month. If Vimal
+      // got paid on Jul 24 and Pavithra on Jul 31, the period starts from
+      // Jul 24 — the earlier one — so both users' spending in the August pay
+      // cycle is included.
+      //
+      // We filter by the "Salary" category (c_salary) rather than the broad
+      // "income" type so that other income (interest, gifts, refunds) does
+      // not accidentally start a pay cycle.
+      //
+      // Fallback chain:
+      //   1. First Salary-category transaction in the previous month (normal
+      //      case: current-month salary lands in the last week of the
+      //      previous month)
+      //   2. First Salary-category transaction in the current month (edge
+      //      case: salary lands in the first week of the current month, not
+      //      the previous one)
+      //   3. Most recent Salary-category transaction overall (edge case: no
+      //      salary this month or last month yet — keep the previous pay
+      //      cycle visible)
+      //   4. Start of the current month (last-resort fallback)
+      const SALARY_CATEGORY_ID = 'c_salary'
+      const startOfThisMonth = localISODate(new Date(today.getFullYear(), today.getMonth(), 1))
+      const startOfPrevMonth = localISODate(new Date(today.getFullYear(), today.getMonth() - 1, 1))
+
+      const firstSalaryPrevMonth = await db.select({ date: schema.transactions.date })
+        .from(schema.transactions)
+        .where(and(
+          eq(schema.transactions.categoryId, SALARY_CATEGORY_ID),
+          gte(schema.transactions.date, startOfPrevMonth),
+          lt(schema.transactions.date, startOfThisMonth),
+        ))
+        .orderBy(asc(schema.transactions.date), asc(schema.transactions.createdAt))
+        .limit(1)
+        .get()
+
+      if (firstSalaryPrevMonth) {
+        from = firstSalaryPrevMonth.date
+      } else {
+        const firstSalaryThisMonth = await db.select({ date: schema.transactions.date })
+          .from(schema.transactions)
+          .where(and(
+            eq(schema.transactions.categoryId, SALARY_CATEGORY_ID),
+            gte(schema.transactions.date, startOfThisMonth),
+          ))
+          .orderBy(asc(schema.transactions.date), asc(schema.transactions.createdAt))
+          .limit(1)
+          .get()
+        if (firstSalaryThisMonth) {
+          from = firstSalaryThisMonth.date
+        } else {
+          const lastSalary = await db.select({ date: schema.transactions.date })
+            .from(schema.transactions)
+            .where(eq(schema.transactions.categoryId, SALARY_CATEGORY_ID))
+            .orderBy(desc(schema.transactions.date), desc(schema.transactions.createdAt))
+            .limit(1)
+            .get()
+          from = lastSalary?.date ?? startOfThisMonth
+        }
+      }
     } else {
       const days = period === 'last_30' ? 30 : 90
       from = localISODate(new Date(today.getFullYear(), today.getMonth(), today.getDate() - days))
@@ -90,7 +153,9 @@ export default defineEventHandler(async (event) => {
         ? 'Last 30 days'
         : period === 'last_90'
           ? 'Last 90 days'
-          : `${format(parseISO(from), 'MMM d')} – ${format(parseISO(to), 'MMM d')}`
+          : period === 'since_last_salary'
+            ? `Since ${format(parseISO(from), 'MMM d')}`
+            : `${format(parseISO(from), 'MMM d')} – ${format(parseISO(to), 'MMM d')}`
 
   const accounts = (await db.select().from(schema.accounts).all()).filter((a) => !a.archived)
   // Transactions are hard-deleted (no soft-delete field); all rows are live.

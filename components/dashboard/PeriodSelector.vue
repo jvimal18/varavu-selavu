@@ -20,6 +20,7 @@ const PRESETS: Array<{ key: PeriodKey; label: string }> = [
   { key: 'this_month', label: 'This month' },
   { key: 'last_30', label: 'Last 30 days' },
   { key: 'last_90', label: 'Last 90 days' },
+  { key: 'since_last_salary', label: 'Since salary' },
   { key: 'custom', label: 'Custom' },
 ]
 

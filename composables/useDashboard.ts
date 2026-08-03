@@ -5,7 +5,7 @@ import { watchDebounced } from '@vueuse/core'
 import type { Transaction } from '~/composables/useTransactions'
 
 /** Dashboard period presets; re-exported from PeriodSelector.vue for UI use. */
-export type PeriodKey = 'this_month' | 'last_30' | 'last_90' | 'custom'
+export type PeriodKey = 'this_month' | 'last_30' | 'last_90' | 'since_last_salary' | 'custom'
 
 export interface DashboardPeriod {
   from: string
@@ -41,7 +41,7 @@ export interface DashboardData {
 export const useDashboard = () => {
   const data = useState<DashboardData | null>('dashboard', () => null)
   const loading = useState<boolean>('dashboard:loading', () => false)
-  const period = useState<PeriodKey>('dashboard:period', () => 'last_30')
+  const period = useState<PeriodKey>('dashboard:period', () => 'since_last_salary')
   const customRange = useState<{ from: string; to: string }>('dashboard:customRange', () => ({ from: '', to: '' }))
 
   async function fetch(opts?: { period?: PeriodKey; from?: string; to?: string }) {
