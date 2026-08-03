@@ -34,28 +34,28 @@ const savingsCount = computed(
 </script>
 
 <template>
-  <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-    <div class="card p-4 md:p-5">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+    <div class="card p-4 md:p-5 min-w-0">
       <div class="label">Cash Liquidity</div>
-      <div class="num text-[clamp(1.125rem,3vw,1.5rem)] font-bold text-ink-900 mt-2">₹{{ (cashLiquidity / 100).toLocaleString('en-IN') }}</div>
+      <div class="num min-w-0 break-words text-[clamp(1.125rem,3vw,1.5rem)] font-bold text-ink-900 mt-2">₹{{ Math.round(cashLiquidity / 100).toLocaleString('en-IN') }}</div>
       <div class="text-[11px] text-ink-500 mt-1.5">
         bank · cash · wallet
         <span v-if="cashCount > 0"> · {{ cashCount }}</span>
       </div>
     </div>
 
-    <div class="card p-4 md:p-5">
+    <div class="card p-4 md:p-5 min-w-0">
       <div class="label">Credit Liquidity</div>
-      <div class="num text-[clamp(1.125rem,3vw,1.5rem)] font-bold text-ink-900 mt-2">₹{{ (creditLiquidity / 100).toLocaleString('en-IN') }}</div>
+      <div class="num min-w-0 break-words text-[clamp(1.125rem,3vw,1.5rem)] font-bold text-ink-900 mt-2">₹{{ Math.round(creditLiquidity / 100).toLocaleString('en-IN') }}</div>
       <div class="text-[11px] text-ink-500 mt-1.5">
         available on credit cards
         <span v-if="creditCount > 0"> · {{ creditCount }} card{{ creditCount === 1 ? '' : 's' }}</span>
       </div>
     </div>
 
-    <div class="card p-4 md:p-5">
+    <div class="card p-4 md:p-5 min-w-0">
       <div class="label">Savings</div>
-      <div class="num text-[clamp(1.125rem,3vw,1.5rem)] font-bold text-ink-900 mt-2">₹{{ (savingsLiquidity / 100).toLocaleString('en-IN') }}</div>
+      <div class="num min-w-0 break-words text-[clamp(1.125rem,3vw,1.5rem)] font-bold text-ink-900 mt-2">₹{{ Math.round(savingsLiquidity / 100).toLocaleString('en-IN') }}</div>
       <div class="text-[11px] text-ink-500 mt-1.5">
         RD · FD · MF
         <span v-if="savingsCount > 0"> · {{ savingsCount }}</span>

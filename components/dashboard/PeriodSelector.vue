@@ -143,19 +143,23 @@ function cancelBudget() {
       <span v-if="error" class="text-xs text-danger-600 pb-2">{{ error }}</span>
     </div>
 
-    <!-- Period secondary stats: Income / Expense + monthly budget widget -->
-    <div class="border-t border-ink-100 pt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
-      <div class="flex items-baseline gap-2">
-        <span class="label">Income · {{ periodLabel }}</span>
-        <span class="num text-sm font-bold text-ink-900">₹{{ (periodIncome / 100).toLocaleString('en-IN') }}</span>
+    <!-- Period secondary stats: Income / Expense + monthly budget widget.
+         On mobile (<sm) the periodLabel is dropped from the labels (it's
+         already shown by the chips above) to keep the row inside the card;
+         the periodLabel returns from sm up. The budget editor wraps to a
+         new line on narrow viewports. -->
+    <div class="border-t border-ink-100 pt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div class="flex items-baseline gap-2 min-w-0 flex-shrink">
+        <span class="label">Income<span class="hidden sm:inline"> · {{ periodLabel }}</span></span>
+        <span class="num text-sm font-bold text-ink-900 whitespace-nowrap">₹{{ Math.round(periodIncome / 100).toLocaleString('en-IN') }}</span>
       </div>
 
-      <div class="flex flex-col gap-1 min-w-0 flex-1">
+      <div class="flex flex-col gap-1 min-w-0 flex-1 basis-full sm:basis-auto">
         <div class="flex items-baseline gap-2 flex-wrap">
-          <span class="label">Expense · {{ periodLabel }}</span>
-          <span class="num text-sm font-bold text-ink-900">₹{{ (periodExpense / 100).toLocaleString('en-IN') }}</span>
+          <span class="label">Expense<span class="hidden sm:inline"> · {{ periodLabel }}</span></span>
+          <span class="num text-sm font-bold text-ink-900 whitespace-nowrap">₹{{ Math.round(periodExpense / 100).toLocaleString('en-IN') }}</span>
         </div>
-        <div v-if="monthBudgetSet" class="flex items-center gap-1.5 text-[11px]">
+        <div v-if="monthBudgetSet" class="flex items-center gap-1.5 text-[11px] flex-wrap">
           <span class="text-ink-500">{{ expenseBudgetPct }}% of {{ formatPaiseCompact(monthBudget) }} budget</span>
           <div class="flex-1 h-1 bg-cream-200 rounded-full overflow-hidden min-w-[4rem]">
             <div
@@ -165,7 +169,7 @@ function cancelBudget() {
             />
           </div>
         </div>
-        <div v-else class="flex items-center gap-2">
+        <div v-else class="flex flex-wrap items-center gap-2">
           <button
             v-if="!editingBudget"
             type="button"
@@ -175,8 +179,8 @@ function cancelBudget() {
             <Icon name="lucide:plus" size="12" />
             Set budget
           </button>
-          <div v-else class="flex items-center gap-2">
-            <div class="relative">
+          <div v-else class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div class="relative flex-1 sm:flex-initial min-w-0">
               <span class="absolute left-2 top-1/2 -translate-y-1/2 text-ink-500 text-xs">₹</span>
               <input
                 v-model="budgetInput"
@@ -184,7 +188,7 @@ function cancelBudget() {
                 min="0"
                 step="1"
                 placeholder="Monthly budget"
-                class="input pl-6 text-xs py-1.5 w-36"
+                class="input pl-6 text-xs py-1.5 w-full sm:w-36"
               />
             </div>
             <button

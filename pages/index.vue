@@ -46,7 +46,7 @@ const periodLabel = computed(() => data.value?.period.label ?? '')
 </script>
 
 <template>
-  <div>
+  <div class="overflow-x-hidden">
     <div class="mb-6">
       <div class="text-xs text-ink-500 font-medium uppercase tracking-wider">{{ periodLabel }}</div>
       <h1 class="text-2xl md:text-3xl font-bold text-ink-900 mt-1">

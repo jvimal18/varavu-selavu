@@ -42,7 +42,12 @@ export default defineNuxtConfig({
       ],
     },
     devOptions: {
-      enabled: true,
+      // Don't register the dev service worker. Without this, @vite-pwa/nuxt
+      // generates a hashed dev-sw (e.g. dev-sw-dist/workbox-<hash>.js) that
+      // the browser tries to fetch after a code change, but the hash has
+      // moved on — leading to a noisy ENOENT in the dev console. Production
+      // service workers (the workbox block above) are unaffected.
+      enabled: false,
     },
   },
 

@@ -3,6 +3,15 @@
 All notable changes to VaravuSelavu are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/) · This project does not yet use SemVer for the app; release tags follow `vMAJOR.MINOR.PATCH`.
 
+## [v1.4.1] - 2026-08-03
+
+### Fixed
+- **Dashboard hero overflow on mobile (Cash/Credit/Savings tiles).** The liquidity rupee values could be wider than a 2-col mobile tile and spilled past the card edge. The hero grid is now `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` (stacked on phones, 2-up from `sm`, 3-up from `lg`); the value containers get `min-w-0` and `break-words` as a safety.
+- **Period selector secondary stats overflow on mobile.** The Income / Expense + budget row in `PeriodSelector` pushed content against the viewport's right edge (`"+ Set budget"` wrapped awkwardly, Expense value clipped). The period label suffix is now hidden below `sm` (it's already shown by the chips above), the Income/Expense blocks get `min-w-0` and wrap cleanly, the budget progress bar wraps with the label, and the budget editor (`+ Set budget` → input + Save + Cancel) wraps to a new line on narrow viewports and the input goes `w-full sm:w-36`.
+- **Rupee values showed a single trailing decimal** (e.g. `₹14,46,150.6`) on the hero tiles and the period Income/Expense. The underlying paise is integer, but `(paise / 100).toLocaleString('en-IN')` drops trailing zeros (`…150.60` → `…150.6`), which is wrong for money. All five displays now round to the nearest whole rupee: `Math.round(paise / 100).toLocaleString('en-IN')`. No more stray decimals.
+- **Page-level horizontal scroll on the dashboard (the "hides nav bar" symptom).** Two new sources of horizontal overflow (the hero + the period selector) made the body horizontally scrollable, which on mobile produced a horizontal scrollbar at the bottom and a confused scroll context that interfered with the fixed bottom nav. The two overflow fixes above are the root cause; as a belt-and-suspenders safeguard the dashboard page root is wrapped in `overflow-x-hidden` so the body can never horizontally scroll on `/`, matching the behaviour of the other pages.
+- **Stale workbox dev service worker ENOENT.** `@vite-pwa/nuxt` was registering a dev SW whose hashed script (`dev-sw-dist/workbox-<hash>.js`) is invalidated on every code change, producing `ENOENT: no such file or directory … workbox-<hash>.js` in the dev console. `pwa.devOptions.enabled` is now `false` — the dev SW is no longer registered. Production service workers (the `pwa.workbox` block) are unaffected; PWA still ships in `nuxt build`.
+
 ## [v1.4.0] - 2026-08-03
 
 ### Changed
