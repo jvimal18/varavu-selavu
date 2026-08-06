@@ -13,8 +13,13 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: 
+      - self-hosted
+      - dev
     timeout-minutes: 15
+
+    container:
+      image: node:22-bookworm
 
     steps:
       - uses: actions/checkout@v4
