@@ -6,69 +6,39 @@ on:
   push:
     branches:
       - main
+      - 'phase1/**'
 
   pull_request:
     branches:
       - main
+      - 'phase1/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build & Test
+  # Primary: GitHub-hosted runner. Free for public repos, no machine overhead.
+  # Runs inside node:22-bookworm via the reusable workflow so it doesn't
+  # pollute the hosted image. If this fails (GitHub outage, quota, infra
+  # issue), the self-hosted job below picks up the slack.
+  hosted:
+    name: Build & Test (hosted)
+    uses: ./.github/workflows/build-and-test.yml
+    with:
+      runner: ubuntu-latest
+    secrets: inherit
 
-    runs-on:
-      - self-hosted
-      - linux
-      - dev
-
-    timeout-minutes: 15
-
-    container:
-      image: node:22-bookworm
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Runner Information
-        run: |
-          echo "Runner: $RUNNER_NAME"
-          echo "OS: $RUNNER_OS"
-          echo "Arch: $RUNNER_ARCH"
-          uname -a
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate version metadata
-        run: node scripts/generate-version-json.mjs
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Run tests
-        run: pnpm test:run
-
-      - name: Build
-        run: pnpm build
+  # Fallback: self-hosted runner. Only runs if the hosted job failed or was
+  # cancelled (e.g., GitHub Actions outage like the one on 2026-08-07 that
+  # motivated this chain). Runs inside node:22-bookworm so the host stays
+  # clean. Branch protection should require this check so merges stay gated
+  # on real CI success even when hosted is unavailable.
+  self-hosted:
+    name: Build & Test (self-hosted fallback)
+    needs: hosted
+    if: failure()
+    uses: ./.github/workflows/build-and-test.yml
+    with:
+      runner: '["self-hosted","linux","dev"]'
+    secrets: inherit
