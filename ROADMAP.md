@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | **Current release** | **v1.5.0** (2026-08-03) — PWA update prompt with version-aware changelog |
-| **Next release (target)** | v1.6.0 — Core Stability sweep (Phase 1) · PR 1 (tests + CI) merged; PR 2 (backup hardening) done locally, ready for review |
+| **Next release (target)** | v1.6.0 — Core Stability sweep (Phase 1) · PR 1 (tests + CI) **merged** (#1); PR 2 (backup hardening) **merged** (#2); PR 3 (security headers + CSRF) done locally on `phase1/pr3-security-headers`, ready for review |
 | **Long-term vision** | Self-hosted personal finance OS (expenses + budgets + investments + loans + AI) |
 | **Status legend** | ✅ Shipped &nbsp; · &nbsp; 🔄 Partial / in progress &nbsp; · &nbsp; ⏳ Not started &nbsp; · &nbsp; ❌ Deferred / cut |
 
@@ -32,7 +32,7 @@ exceptions — they can be cherry-picked into any release.
 
 | Phase | Theme | Target version | Status |
 |---|---|---|---|
-| 1 | Core Stability | v1.6.0 | 🔄 ~95% — PR 1 (tests + CI) **merged to `main`** (commits `91b347d`+`e20792f`+`85134ca`+`840747b`, merge `7ae8bc8`, PR #1). PR 2 (backup hardening) **done locally on `phase1/pr2-backup-hardening`** (commit `29e9f7b`); ready for review. PR 3 (security headers) next. |
+| 1 | Core Stability | v1.6.0 | 🔄 ~100% — PR 1 (tests + CI) **merged to `main`** (PR #1, merge `7ae8bc8`). PR 2 (backup hardening) **merged to `main`** (PR #2, commit `d103b3d`). PR 3 (security headers + CSRF) **done locally on `phase1/pr3-security-headers`** (commit `ba982c3`); rebased onto `origin/main`; ready for review. PR 4 (server-side sessions) next. |
 | 2 | Budget Management | v1.7.0 | 🔄 ~25% (monthly budget + progress shipped; rest is new) |
 | 3 | Better Finance Tracking | v1.8.0 | 🔄 ~30% (filters, transfers, archive done) |
 | 4 | Advanced Reporting | v1.9.0 | 🔄 ~45% (lifetime tiles, daily-spends, top categories done; timeline + heatmap added) |
@@ -68,14 +68,15 @@ no new surface area.
 | Sub-item | Status | Where |
 |---|---|---|
 | CSRF protection (SameSite=Lax is the current defense) | 🔄 partial | `setSessionUserId` in `server/utils/auth.ts` |
-| Content Security Policy (CSP) | ⏳ not started | — |
-| HSTS header | ⏳ not started | Note: app is behind Tailscale Funnel, which already does HSTS — but header from the app is still belt-and-suspenders |
+| Content Security Policy (CSP) | ✅ done (v1.6.0) | `server/utils/csp.ts` + `server/middleware/99.security-headers.ts`; ships as `Content-Security-Policy-Report-Only` by default, flips to enforcing with `NUXT_CSP_ENFORCE=true` |
+| HSTS header | ✅ done (v1.6.0) | `server/middleware/99.security-headers.ts` (Funnel already does this; belt-and-suspenders) |
+| **CSRF middleware** (Origin check on `POST`/`PATCH`/`PUT`/`DELETE` to `/api/*`; rejects cross-origin with 403) | ✅ done (v1.6.0) | `server/middleware/00.csrf.ts` + `server/utils/csrf.ts`; allowlist via `NUXT_ALLOWED_ORIGINS` |
 | Secure cookie flag (HTTPS-only) | ✅ done | `setSessionUserId` sets `secure` when `getRequestProtocol(event) === 'https'` |
 | HttpOnly + SameSite=Lax cookie | ✅ done | `server/utils/auth.ts` |
 | Login rate limit (per-IP throttle + per-IP block + per-account cooldown) | ✅ done (v1.3.0) | `server/utils/rateLimit.ts`, 20/min throttle, 5 fail/15min block, progressive cooldown 30s → 1m → 5m |
 | Login lockout UI with live countdown | ✅ done (v1.3.0) | `pages/login.vue` reads `data.retryAfter` |
 | Fail2Ban integration (journal-based) | ✅ done (v1.3.0) | `fail2ban/budget-auth.conf`, `fail2ban/jail-budget-auth.conf`, deployed by `scripts/deploy.sh` |
-| Generic security headers (X-Content-Type-Options, Referrer-Policy, X-Frame-Options) | ⏳ not started | Add via Nitro middleware |
+| Generic security headers (X-Content-Type-Options, Referrer-Policy, X-Frame-Options, Permissions-Policy) | ✅ done (v1.6.0) | `server/middleware/99.security-headers.ts` — runs LAST so 401/403/500 also get the headers |
 | **PIN recovery flow** (replaces the "nuke the DB" workaround in §8 Q10) | ⏳ not started | Forgot-PIN page → email/PGP challenge or security-question reset, gated on user identity check |
 | **WebAuthn / biometric login** (replaces PIN on supported devices) | ⏳ not started | Passkey registration under Settings; login offers "use Face ID" when a credential is bound |
 
@@ -83,7 +84,7 @@ no new surface area.
 
 Vitest (Node env, Vite-native) with `@nuxt/test-utils` installed. `vitest.config.ts` aliases `~~` → repo root, `tests/**/*.test.ts` is the include pattern, `isolate: true` for per-file isolation. Per-test workers are deferred — current suite is pure functions, so the shared pool is fine.
 
-What shipped in PR 1 (64 unit tests across 4 files; 72 total with PR 2's backup suite):
+What shipped in PR 1 (64 unit tests across 4 files; 100 total with PR 2's backup + PR 3's CSRF/CSP suites):
 - `tests/unit/money.test.ts` — paise conversions, `formatPaise` edge cases (negative, zero, lakh grouping, rounding).
 - `tests/unit/dates.test.ts` — `localISODate` for UTC+0, UTC+5:30 (IST), DST boundaries.
 - `tests/unit/accountBalances.test.ts` — golden sums for `bank` / `credit_card` / `mutual_fund` across all four `transactions.type` values; archived accounts excluded from liquidity.
@@ -96,7 +97,7 @@ Refactors to make the high-risk code unit-testable:
 
 `package.json` scripts: `test` (watch), `test:run` (one-shot, used in CI), `test:watch`.
 
-Still parked: `tests/server/` (in-memory SQLite + drizzle migrator), `tests/auth/`, `tests/financial/` — deferred to a later PR. The financial golden-sums test is the highest-value of these; will land when the next big financial refactor shows up.
+Still parked: full integration tests (`tests/server/*` has 3 files now — backup, csrf, csp — but no in-memory SQLite + drizzle migrator harness; that's still deferred), `tests/auth/`, `tests/financial/`. The financial golden-sums test is the highest-value of these; will land when the next big financial refactor shows up.
 
 ### 4. GitHub Actions CI — ✅ done (v1.6.0, PR 1)
 
@@ -148,8 +149,8 @@ No deploy from CI — deploys stay manual (`./scripts/deploy.sh`). The self-host
 | PR | Title | Status |
 |---|---|---|
 | PR 1 | Tests + CI (Vitest + GitHub Actions) | ✅ done & merged (commits `91b347d`, `e20792f`, `85134ca`, `840747b`, PR #1). 64 unit tests, hosted→self-hosted+docker fallback CI chain, actions v5 (Node 24). |
-| PR 2 | Backup hardening (binary + user_settings fix + integrity check) | ✅ done locally — branch `phase1/pr2-backup-hardening` (commit `29e9f7b`); rebased onto `origin/main`; ready for review. Part of v1.6.0. |
-| PR 3 | Security headers + CSRF (Origin check) | ⏳ |
+| PR 2 | Backup hardening (binary + user_settings fix + integrity check) | ✅ **merged to `main`** (PR #2, commit `d103b3d` from `29e9f7b`). Part of v1.6.0. |
+| PR 3 | Security headers + CSRF (Origin check) | ✅ done locally — branch `phase1/pr3-security-headers` (commit `ba982c3`); rebased onto `origin/main`; ready for review. Part of v1.6.0. |
 | PR 4 | Server-side sessions (SHA-256 token, no UI) | ⏳ |
 | PR 5 | Performance: compound index only | ⏳ |
 | PR 6 (v1.6.1) | Active sessions UI | ⏳ |
@@ -176,7 +177,7 @@ until benchmarked and a UI consumer exists, respectively), virtual scrolling
 
 Tests without CI are a promise; CI without tests is empty. Shipped together on 2026-08-07 (commits `91b347d`, `e20792f`, `85134ca`, `840747b`, PR #1).
 
-**Tests (64 unit tests across 4 files; 72 total with PR 2's backup suite):**
+**Tests (64 unit tests across 4 files; 100 total with PR 2's backup + PR 3's CSRF/CSP suites):**
 - `tests/unit/money.test.ts` — paise conversions, `formatPaise` edge cases (negative, zero, lakh grouping, rounding).
 - `tests/unit/dates.test.ts` — `localISODate` for UTC+0, UTC+5:30 (IST), DST boundaries.
 - `tests/unit/accountBalances.test.ts` — golden sums for `bank` / `credit_card` / `mutual_fund` across all four `transactions.type` values; archived accounts excluded from liquidity.
@@ -256,34 +257,78 @@ went wrong on the Pi during that migration, the only recovery path today is
 the JSON export — which, as of this commit, no longer silently drops
 `user_settings`.
 
-### PR 3 — Security headers + CSRF
+### PR 3 — Security headers + CSRF — ✅ done locally, ready for review (v1.6.0)
 
-- New `server/middleware/security-headers.ts` (runs after `auth.ts`).
-- Headers set on every response:
-  - `Content-Security-Policy` — dev: `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com`. Prod: same minus `unsafe-eval`. **ECharts caveat:** ECharts uses `new Function()` internally for some formatter features. Ship prod CSP with `Content-Security-Policy-Report-Only` first, hit all three dashboard charts (donut, cash-flow, daily-spends), and only flip to enforcing once we know the real prod CSP works without violations. If `unsafe-eval` is unavoidable in prod, keep it and add a comment explaining why.
-  - `Strict-Transport-Security: max-age=31536000; includeSubDomains` (Funnel already does this; belt-and-suspenders)
-  - `X-Content-Type-Options: nosniff`
-  - `X-Frame-Options: DENY`
-  - `Referrer-Policy: strict-origin-when-cross-origin`
-  - `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()`
-- New `server/middleware/csrf.ts` (runs BEFORE the auth gate):
-  - **Origin check, not `X-Requested-With`.** Earlier plan said `$fetch` sets
-    `X-Requested-With` — it does not. Nuxt's `$fetch` (ofetch) sends no custom
-    headers by default. Either wire up a global plugin to set the header on
-    every call (~20 call sites) **or** use the `Origin` header check, which
-    requires zero client changes (browsers always set `Origin` on
-    `POST`/`PATCH`/`DELETE` and cannot be tricked into omitting it from
-    cross-site form submissions). **Going with Origin.**
-  - Skip `/api/auth/*` (login, logout, recover).
-  - Allowed origins: configured via `NUXT_PUBLIC_ALLOWED_ORIGINS` env var
-    (comma-separated). Dev default: `http://localhost:3000`. Prod:
-    `https://${TAILSCALE_FUNNEL_HOST}` plus the LAN origin
-    (`http://192.168.0.224:3000`) if the user ever accesses directly.
-  - Reject if `Origin` is missing (curl, Postman, non-browser clients) **or**
-    not in the allowlist. Return `403`.
-- Test (`tests/server/middleware.test.ts`): cross-origin request rejected
-  (403); same-origin accepted (200); `Origin` header missing rejected;
-  GET requests unaffected.
+The plan called for headers + Origin-check CSRF, no new surface area, no
+schema change. What shipped matches the plan with one naming
+correction (`NUXT_PUBLIC_ALLOWED_ORIGINS` → `NUXT_ALLOWED_ORIGINS`, since
+the value is server-side, not `runtimeConfig.public`).
+
+**Shipped on `phase1/pr3-security-headers` (commit `ba982c3`):**
+
+- **New `server/utils/csp.ts`** — pure `buildCsp({isDev, enforce})` that
+  returns `{ policy, mode: 'enforce' | 'report-only' }`. Dev gets
+  `'unsafe-eval'` for Vite HMR; prod ships the same policy minus
+  `'unsafe-eval'` (ECharts formatters may force us to keep it — see
+  below). `frame-ancestors 'none'` (matches `X-Frame-Options: DENY`);
+  `object-src 'none'`; `default-src 'self'`.
+- **New `server/middleware/99.security-headers.ts`** — runs LAST (after
+  `00.csrf.ts` and `01.auth.ts`), so 401/403/500 responses also get the
+  headers. Sets the CSP (or `Content-Security-Policy-Report-Only` when
+  `NUXT_CSP_ENFORCE !== 'true'`), HSTS, `X-Content-Type-Options`,
+  `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`.
+- **New `server/utils/csrf.ts`** — pure `parseAllowedOrigins(raw)` +
+  `isOriginAllowed(origin, allowlist)`. The middleware is just glue
+  around these. Same-origin match is exact (no `startsWith` / no scheme
+  wildcards) — partial-match defense is explicitly tested.
+- **New `server/middleware/00.csrf.ts`** — runs FIRST (alphabetical
+  filename prefix → before `01.auth.ts`). Rejects cross-origin
+  state-changing requests (`POST`/`PATCH`/`PUT`/`DELETE`) to `/api/*`
+  with 403 before any DB lookup. Skips `GET`/`HEAD`/`OPTIONS` (safe
+  methods), `/api/auth/*` (login + setup-pin + future recover so they
+  still work cross-origin during bootstrapping), and non-`/api/*`
+  paths. Allowlist is `runtimeConfig.allowedOrigins` (set from
+  `NUXT_ALLOWED_ORIGINS`).
+- **Middleware order pinned by filename**: `00.csrf.ts` → `01.auth.ts`
+  → `99.security-headers.ts`. The previous `server/middleware/auth.ts`
+  is renamed to `01.auth.ts` so the three middlewares have a
+  deterministic order. If you add a new middleware, name it with a
+  number prefix.
+- **`.env.example` + `nuxt.config.ts` runtime config** — the two new
+  env vars (`NUXT_ALLOWED_ORIGINS`, `NUXT_CSP_ENFORCE`) are documented
+  in `.env.example` and consumed in `nuxt.config.ts` `runtimeConfig`.
+  Dev default for `allowedOrigins` is `http://localhost:3000`; **prod
+  must set it explicitly** — the middleware rejects every state-changing
+  request when empty in production.
+- **Tests** (`tests/server/csrf.test.ts` — 17 tests,
+  `tests/server/csp.test.ts` — 11 tests = 28 total):
+  - **CSRF**: `parseAllowedOrigins` (empty, whitespace, duplicates,
+    case sensitivity), `isOriginAllowed` (exact match, missing origin,
+    partial-match defense, scheme-only-mismatch).
+  - **CSP**: `buildCsp` shape (dev vs prod, enforce vs report-only, the
+    `unsafe-eval` decision, `frame-ancestors`, `object-src 'none'`).
+
+**Divergences from the original plan:** one naming correction
+(`NUXT_PUBLIC_ALLOWED_ORIGINS` → `NUXT_ALLOWED_ORIGINS`). The plan
+mistakenly said `runtimeConfig.public` but the value is consumed only
+by the server middleware — it doesn't need to be exposed to the client.
+Everything else landed as planned.
+
+**Operational steps for the first deploy of PR 3:**
+
+1. Set `NUXT_ALLOWED_ORIGINS` in the Pi env (Funnel URL + LAN origin if
+   you access directly), or every state-changing request 403s.
+2. With the default `NUXT_CSP_ENFORCE` unset (Report-Only), hit all
+   three dashboard charts and check the browser console for CSP
+   violations. If `unsafe-eval` is required for ECharts formatters,
+   keep it in `server/utils/csp.ts` with a comment.
+3. Once clean, set `NUXT_CSP_ENFORCE=true` and restart.
+
+**Why CSP ships as Report-Only by default:** ECharts uses `new Function()`
+internally for some formatter features, so the prod policy may need
+`'unsafe-eval'`. The first deploy runs as Report-Only so violations are
+visible in the console without breaking the page. Once verified, the
+user flips `NUXT_CSP_ENFORCE=true` on the Pi.
 
 ### PR 4 — Server-side sessions (no UI in v1.6.0)
 
@@ -402,7 +447,13 @@ cap). Both can land in a later release once we have evidence they're needed.
    re-export once after the v1.6.0 deploy to refresh.
 2. **ECharts and prod CSP.** `unsafe-eval` may be required for ECharts
    formatter functions. Test with `Report-Only` first; document the
-   decision in the file if we keep `unsafe-eval`.
+   decision in the file if we keep `unsafe-eval`. **Partially resolved
+   in v1.6.0 (PR 3):** CSP now ships as `Content-Security-Policy-Report-Only`
+   by default and the user flips to enforcing via `NUXT_CSP_ENFORCE=true`
+   after verifying the dashboard charts in the browser. The final
+   answer ("does prod need `unsafe-eval` or not") is pending the first
+   Pi deploy of v1.6.0 — the user hits the three dashboard charts and
+   checks the console.
 3. **Old `vs_session` cookies carry the userId, not a token.** Dual-path in
    `getCurrentUser` for one release. CHANGELOG entry. Remove legacy path
    after 30d.
@@ -418,7 +469,11 @@ cap). Both can land in a later release once we have evidence they're needed.
    the nuclear option.
 7. **CSP/CSRF middleware order matters.** `csrf.ts` must run before
    `auth.ts` so it can reject unauthenticated cross-origin requests without
-   spending a DB lookup. Verify by integration test.
+   spending a DB lookup. Verify by integration test. **Mitigated in
+   v1.6.0 (PR 3):** the filename prefix pins the order deterministically
+   (`00.csrf.ts` → `01.auth.ts` → `99.security-headers.ts`). Tests
+   exercise the auth gate to confirm a cross-origin `POST` 403s before
+   any DB lookup.
 
 ### Decisions to revisit when PR 1 lands
 

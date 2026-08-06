@@ -21,9 +21,9 @@ pnpm dev                          # http://localhost:3000
 
 - `pnpm db:reset` — wipes `$NUXT_DB_PATH` (defaults to `./data/dev.db`), then
   re-migrates + re-seeds. Local dev only; never run on the Pi.
-- `pnpm test:run` for the Vitest suite (72 tests; 64 pure-function unit tests for
-  the financial-math and dashboard-period code, plus 8 backup integration tests).
-  `pnpm test` for watch mode.
+- `pnpm test:run` for the Vitest suite (100 tests; 64 pure-function unit tests for
+  the financial-math and dashboard-period code, 8 backup integration tests, 17 CSRF
+  middleware tests, 11 CSP middleware tests). `pnpm test` for watch mode.
   Pre-PR sanity check: `pnpm typecheck && pnpm test:run && pnpm build`.
 
 ## Commands cheat sheet
@@ -119,6 +119,34 @@ the bundled one** (the `.output` was built on the dev machine's arch) →
 `migrate.mjs` as user `budget` → install systemd units + fail2ban configs →
 restart service. Verify via SSH curl to `127.0.0.1:3000/api/auth/me` (expect
 401 — that proves the app is up; the dev box can't reach 127.0.0.1 on the Pi).
+
+## Security model (v1.6.0+)
+
+Three Nitro middlewares, in a fixed order pinned by filename prefix:
+
+- **`server/middleware/00.csrf.ts`** (runs FIRST) — `parseAllowedOrigins` +
+  `isOriginAllowed` in `server/utils/csrf.ts`. Checks the `Origin` header on
+  `POST`/`PATCH`/`PUT`/`DELETE` to `/api/*` against a server-side allowlist
+  (`NUXT_ALLOWED_ORIGINS`, comma-separated). Rejects with 403 before any DB
+  lookup. Skips `GET`/`HEAD`/`OPTIONS`, `/api/auth/*` (login + setup-pin +
+  future recover so they work cross-origin during bootstrapping), and
+  non-`/api/*` paths. Dev default allowlist is `http://localhost:3000`;
+  **production MUST set `NUXT_ALLOWED_ORIGINS` explicitly** — an empty
+  allowlist in production rejects every state-changing request.
+- **`server/middleware/01.auth.ts`** (was `auth.ts`; renamed for ordering) — the
+  global auth gate from v1.0.0, unchanged.
+- **`server/middleware/99.security-headers.ts`** (runs LAST) — `buildCsp({isDev,
+  enforce})` in `server/utils/csp.ts` emits the CSP, then the middleware sets
+  CSP (or `Content-Security-Policy-Report-Only` when `NUXT_CSP_ENFORCE !== 'true'`),
+  HSTS, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+  `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy:
+  camera=(), microphone=(), geolocation=(), payment=()`. Runs last so 401/403/500
+  responses also get the headers.
+
+The three env vars that drive this:
+- `NUXT_ALLOWED_ORIGINS` — comma-separated allowlist; required in prod.
+- `NUXT_CSP_ENFORCE` — set to `true` to flip CSP from Report-Only to enforcing.
+- `NUXT_SESSION_SECRET` — pre-existing, still required.
 
 ## Backup model (v1.6.0+)
 
@@ -238,6 +266,37 @@ Both scripts `process.exit(1)` on any failure including `PRAGMA integrity_check`
   lets v1.0 snapshots load without crashing, but you lose the primary
   account + budget. Re-export from the live DB after the v1.6.0 deploy
   to refresh the on-Drive copy.
+- **Nitro middleware order is pinned by filename prefix** in
+  `server/middleware/`. The fixed order is `00.csrf.ts` → `01.auth.ts` →
+  `99.security-headers.ts`. CSRF must run first (so cross-origin state
+  changes 403 before any DB lookup); security headers must run last (so
+  401/403/500 also get them). If you add a new middleware, name it with a
+  number prefix to make the order explicit. Re-numbering an existing
+  file is a behavior change.
+- **CSRF is an `Origin` header check, not `X-Requested-With`.** Browsers
+  always set `Origin` on `POST`/`PATCH`/`PUT`/`DELETE` and a cross-site
+  attacker cannot spoof it (same-origin policy + CORS preflight). Nuxt's
+  `$fetch` (ofetch) does **not** set `X-Requested-With`, so the
+  `Origin` check requires zero client changes. Allowlist is server-side
+  via `NUXT_ALLOWED_ORIGINS` (comma-separated). The match is exact —
+  no scheme wildcards, no `startsWith` partial matches. `parseAllowedOrigins`
+  + `isOriginAllowed` are pure functions in `server/utils/csrf.ts`; both
+  are unit-tested.
+- **`NUXT_ALLOWED_ORIGINS` MUST be set in production.** The dev default
+  is `http://localhost:3000`; the prod default is empty, which means
+  the CSRF middleware rejects every state-changing `/api/*` request
+  with 403. This is deliberate (fail-closed) but easy to miss — set it
+  in the Pi env before restarting the service.
+- **CSP ships as `Content-Security-Policy-Report-Only` by default** and
+  flips to enforcing via `NUXT_CSP_ENFORCE=true`. ECharts uses
+  `new Function()` internally for some formatter features, so the prod
+  policy may need `'unsafe-eval'`. The first deploy after PR 3 runs as
+  Report-Only so violations are visible in the browser console without
+  breaking the page. Hit all three dashboard charts (donut, cash-flow,
+  daily-spends) and check the console; once clean, set
+  `NUXT_CSP_ENFORCE=true` on the Pi. If `unsafe-eval` is required for
+  ECharts, keep it in `server/utils/csp.ts` and add a comment
+  explaining the trade-off.
 
 ## Useful entry points to read first
 
@@ -273,3 +332,11 @@ Both scripts `process.exit(1)` on any failure including `PRAGMA integrity_check`
 - `systemd/budget-tracker-{export,binary-backup}.{service,timer}` — the
   two nightly backup schedules (JSON at 02:00, binary at 03:00). Both are
   `Type=oneshot`; failures surface in `journalctl -u <unit>`.
+- `server/middleware/{00.csrf,01.auth,99.security-headers}.ts` + the
+  `server/utils/{csrf,csp}.ts` pure helpers — the three Nitro middlewares
+  (in filename-prefix order: CSRF first, auth second, security headers
+  last) and the pure builders they call. The match in
+  `server/utils/csrf.ts:isOriginAllowed` is exact, no `startsWith`. The
+  CSP emitted by `server/utils/csp.ts:buildCsp` is `Report-Only` when
+  `NUXT_CSP_ENFORCE !== 'true'`. `tests/server/csrf.test.ts` (17 tests)
+  and `tests/server/csp.test.ts` (11 tests) cover both.
