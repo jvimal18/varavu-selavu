@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | **Current release** | **v1.5.0** (2026-08-03) — PWA update prompt with version-aware changelog |
-| **Next release (target)** | v1.6.0 — Core Stability sweep (Phase 1) · PR 1 (tests + CI) **merged** (#1); PR 2 (backup hardening) **merged** (#2); PR 3 (security headers + CSRF) done locally on `phase1/pr3-security-headers`, ready for review |
+| **Next release (target)** | v1.6.0 — Core Stability sweep (Phase 1) · PR 1 (tests + CI) **merged** (#1); PR 2 (backup hardening) **merged** (#2); PR 3 (security headers + CSRF) **merged** (#3); PR 4 (server-side sessions) done locally on `phase1/pr4-server-side-sessions`, ready for review |
 | **Long-term vision** | Self-hosted personal finance OS (expenses + budgets + investments + loans + AI) |
 | **Status legend** | ✅ Shipped &nbsp; · &nbsp; 🔄 Partial / in progress &nbsp; · &nbsp; ⏳ Not started &nbsp; · &nbsp; ❌ Deferred / cut |
 
@@ -32,7 +32,7 @@ exceptions — they can be cherry-picked into any release.
 
 | Phase | Theme | Target version | Status |
 |---|---|---|---|
-| 1 | Core Stability | v1.6.0 | 🔄 ~100% — PR 1 (tests + CI) **merged to `main`** (PR #1, merge `7ae8bc8`). PR 2 (backup hardening) **merged to `main`** (PR #2, commit `d103b3d`). PR 3 (security headers + CSRF) **done locally on `phase1/pr3-security-headers`** (commit `ba982c3`); rebased onto `origin/main`; ready for review. PR 4 (server-side sessions) next. |
+| 1 | Core Stability | v1.6.0 | 🔄 ~100% — PR 1 (tests + CI) **merged** (#1, `7ae8bc8`). PR 2 (backup hardening) **merged** (#2, `d103b3d`). PR 3 (security headers + CSRF) **merged** (#3, `1353241`). PR 4 (server-side sessions) **done locally on `phase1/pr4-server-side-sessions`** (commit `e75b2d2`); rebased onto `origin/main`; ready for review. PR 5 (compound index) last. |
 | 2 | Budget Management | v1.7.0 | 🔄 ~25% (monthly budget + progress shipped; rest is new) |
 | 3 | Better Finance Tracking | v1.8.0 | 🔄 ~30% (filters, transfers, archive done) |
 | 4 | Advanced Reporting | v1.9.0 | 🔄 ~45% (lifetime tiles, daily-spends, top categories done; timeline + heatmap added) |
@@ -51,17 +51,22 @@ exceptions — they can be cherry-picked into any release.
 Make the current app production-grade before piling on features. Hardening only;
 no new surface area.
 
-### 1. Session Management — 🔄 partial
+### 1. Session Management — 🔄 partial (table + API done; UI deferred to v1.6.1)
 
-- **What's done (v1.0.0)**:
-  - httpOnly, SameSite=Lax session cookie carrying `userId` (signed via the cookie itself, not a server-side token).
-  - 30-day `Max-Age` expiry.
-  - `POST /api/auth/logout` clears the cookie (`server/utils/auth.ts`).
-- **What's missing**:
-  - Server-side session table → no way to enumerate, revoke, or expire individual sessions.
-  - "Log out other devices" UI.
+- **What's done (v1.6.0, PR 4)**:
+  - New `sessions` table (id is `SHA-256(token)`, NOT the raw cookie value; `user_id` FK with `ON DELETE CASCADE`; columns for `user_agent`, `ip`, `created_at`, `last_seen_at`, `expires_at`, `revoked_at`; two indexes `idx_sessions_user` and `idx_sessions_expires`).
+  - Cookie holds a 43-char `base64url(32-byte)` random token; DB stores the SHA-256 hash. A leaked DB file yields only hashes, not bearer tokens.
+  - `server/utils/auth.ts`: `setSessionUserId` is now async (generates token, hashes it, inserts session row, sets cookie); `getCurrentUser` reads + hashes + looks up + rejects if expired or revoked + bumps `last_seen_at` with a 5-min in-process debounce (per-session `Map`, lost on restart — acceptable); `clearSessionCookie` is now async (revokes session row, deletes cookie); new `revokeAllOtherSessions(userId, keepId)` for the PIN-change flow; `hashSessionToken` + `newSessionToken` exported for testability; `readSessionMeta` reads UA + IP from the request.
+  - `setup-pin.post.ts` revokes other sessions on PIN change (order: revoke first using the current cookie's hash, then create the new session; reverse order would miss the old session).
+  - `logout.post.ts` handler is async, awaits `clearSessionCookie` (otherwise the response is sent before the DB write completes, leaving the session row "active" until expiry).
+  - `stores/auth.ts` does a **hard reload to `/login`** on logout (not Pinia `$reset()`) — the composables wrap `useState`, not Pinia stores, so calling `$reset()` would crash with `TypeError: store.$reset is not a function`. Hard reload is simpler and more robust.
+  - Periodic cleanup: `scripts/cleanup-sessions.mjs` + `systemd/budget-tracker-session-cleanup.{service,timer}` (monthly, 1st @ 04:00). `scripts/deploy.sh` auto-enables the timer (the only one that gets auto-enabled; export and binary-backup stay manual).
+  - `scripts/backup-binary.mjs` `EXPECTED_TABLES` is now 6 (sessions added) — restoring a binary backup preserves active sessions, so users with a matching cookie stay authenticated.
+  - JSON snapshot version bumped 1.1 → 1.2; v1.0 and v1.1 snapshots still restore (sessions default to `[]`).
+- **What's still missing (deferred to v1.6.1, PR 6)**:
+  - "Active sessions" UI under Settings → list other devices, revoke individually.
+  - "Log out other devices" button.
   - "Force re-login on suspicious activity" hook (would consume the audit log from §48).
-- **Proposed shape**: new `sessions` table (`id` (random token), `user_id`, `user_agent`, `ip`, `created_at`, `last_seen_at`, `expires_at`, `revoked_at`); cookie stores the token, server validates on every request; admin UI under Settings → Active sessions.
 
 ### 2. Security Hardening — 🔄 partial
 
@@ -84,7 +89,7 @@ no new surface area.
 
 Vitest (Node env, Vite-native) with `@nuxt/test-utils` installed. `vitest.config.ts` aliases `~~` → repo root, `tests/**/*.test.ts` is the include pattern, `isolate: true` for per-file isolation. Per-test workers are deferred — current suite is pure functions, so the shared pool is fine.
 
-What shipped in PR 1 (64 unit tests across 4 files; 100 total with PR 2's backup + PR 3's CSRF/CSP suites):
+What shipped in PR 1 (64 unit tests across 4 files; 124 total with PR 2's backup + PR 3's CSRF/CSP + PR 4's auth suites):
 - `tests/unit/money.test.ts` — paise conversions, `formatPaise` edge cases (negative, zero, lakh grouping, rounding).
 - `tests/unit/dates.test.ts` — `localISODate` for UTC+0, UTC+5:30 (IST), DST boundaries.
 - `tests/unit/accountBalances.test.ts` — golden sums for `bank` / `credit_card` / `mutual_fund` across all four `transactions.type` values; archived accounts excluded from liquidity.
@@ -151,7 +156,7 @@ No deploy from CI — deploys stay manual (`./scripts/deploy.sh`). The self-host
 | PR 1 | Tests + CI (Vitest + GitHub Actions) | ✅ done & merged (commits `91b347d`, `e20792f`, `85134ca`, `840747b`, PR #1). 64 unit tests, hosted→self-hosted+docker fallback CI chain, actions v5 (Node 24). |
 | PR 2 | Backup hardening (binary + user_settings fix + integrity check) | ✅ **merged to `main`** (PR #2, commit `d103b3d` from `29e9f7b`). Part of v1.6.0. |
 | PR 3 | Security headers + CSRF (Origin check) | ✅ done locally — branch `phase1/pr3-security-headers` (commit `ba982c3`); rebased onto `origin/main`; ready for review. Part of v1.6.0. |
-| PR 4 | Server-side sessions (SHA-256 token, no UI) | ⏳ |
+| PR 4 | Server-side sessions (SHA-256 token, 5-min debounce, force re-login on deploy) | ✅ done locally — branch `phase1/pr4-server-side-sessions` (commit `e75b2d2`); rebased onto `origin/main`; ready for review. Part of v1.6.0. |
 | PR 5 | Performance: compound index only | ⏳ |
 | PR 6 (v1.6.1) | Active sessions UI | ⏳ |
 | PR 7 (v1.6.1) | PIN recovery | ⏳ |
@@ -177,7 +182,7 @@ until benchmarked and a UI consumer exists, respectively), virtual scrolling
 
 Tests without CI are a promise; CI without tests is empty. Shipped together on 2026-08-07 (commits `91b347d`, `e20792f`, `85134ca`, `840747b`, PR #1).
 
-**Tests (64 unit tests across 4 files; 100 total with PR 2's backup + PR 3's CSRF/CSP suites):**
+**Tests (64 unit tests across 4 files; 124 total with PR 2's backup + PR 3's CSRF/CSP + PR 4's auth suites):**
 - `tests/unit/money.test.ts` — paise conversions, `formatPaise` edge cases (negative, zero, lakh grouping, rounding).
 - `tests/unit/dates.test.ts` — `localISODate` for UTC+0, UTC+5:30 (IST), DST boundaries.
 - `tests/unit/accountBalances.test.ts` — golden sums for `bank` / `credit_card` / `mutual_fund` across all four `transactions.type` values; archived accounts excluded from liquidity.
@@ -330,13 +335,16 @@ internally for some formatter features, so the prod policy may need
 visible in the console without breaking the page. Once verified, the
 user flips `NUXT_CSP_ENFORCE=true` on the Pi.
 
-### PR 4 — Server-side sessions (no UI in v1.6.0)
+### PR 4 — Server-side sessions (no UI in v1.6.0) — ✅ done locally, ready for review (v1.6.0)
 
 The UI for listing/revoking sessions is a *feature*, not hardening, and is
 deferred to v1.6.1 (PR 6 below). This PR delivers the security-critical
 table + API.
 
-- Migration `0002_*.sql` (mirror in `scripts/migrate.mjs`):
+**Shipped on `phase1/pr4-server-side-sessions` (commit `e75b2d2`):**
+
+- **Schema** — new `db/migrations/0002_sessions.sql` (mirrored in
+  `db/migrations/meta/_journal.json`):
   ```sql
   CREATE TABLE sessions (
     id text PRIMARY KEY,                 -- SHA-256(raw_token), hex; NOT the cookie value
@@ -351,43 +359,96 @@ table + API.
   CREATE INDEX idx_sessions_user ON sessions(user_id);
   CREATE INDEX idx_sessions_expires ON sessions(expires_at);
   ```
-  **Hash the session ID before storing.** The cookie holds the raw token;
-  the DB holds `SHA-256(token)`. On lookup, hash the cookie value and query
-  by hash. A leaked DB file then yields only hashes, not bearer tokens. Cost
-  per request: one SHA-256 (microseconds).
-- `server/utils/auth.ts`:
-  - `setSessionUserId(event, userId)` → generate 32-byte random token
-    (base64url), `id = sha256(token).hex`, insert `sessions` row, set
-    cookie to raw token.
-  - `getCurrentUser(event)` → read token from cookie, `id =
-    sha256(token).hex`, look up session, reject if `expires_at < now()` or
-    `revoked_at IS NOT NULL`; on success, bump `last_seen_at` debounced
-    to 60s. Cookie holds raw token; DB stores hash; they never collide.
-  - `clearSessionCookie(event)` → also `UPDATE sessions SET revoked_at = now() WHERE id = ?`.
-  - **Revoke all other sessions on PIN change.** In the change-PIN endpoint,
-    add `UPDATE sessions SET revoked_at = now() WHERE user_id = ? AND id != ?`
-    (keep the current session, revoke the rest). One line.
-- **Pinia reset on logout** (`stores/auth.ts`): when `logout()` succeeds,
-  iterate the registered Pinia stores and call `$reset()` on each, so the
-  next login on the same browser doesn't briefly see stale
-  `useAccounts` / `useTransactions` / `useDashboard` data. Cheap insurance
-  against a UI bug that becomes more visible once server-side revocation is
-  in play.
-- **Backward compat:** keep a dual-path in `getCurrentUser` for one release —
-  if the cookie value matches a `userId` (legacy), create a session row
-  on-demand using the user_id as the token (no security change vs. today:
-  the value is the user_id either way). After 30d, remove the legacy path.
-  CHANGELOG entry.
-- Cookie name stays `vs_session`. Same `httpOnly` / `SameSite=Lax` /
-  `secure`-on-HTTPS settings.
-- **Periodic cleanup** (one-shot script `scripts/cleanup-sessions.mjs`,
-  scheduled by a third systemd timer monthly): `DELETE FROM sessions WHERE
-  expires_at < ?` for `now() - 30 days` (or `revoked_at IS NOT NULL AND
-  revoked_at < now() - 7 days`). The `idx_sessions_expires` index makes
-  this cheap. Without it, the table grows unbounded.
-- Tests: token round-trip, expiry, revoke, debounce, legacy fallback,
-  cross-user isolation, PIN change revokes others, hash in DB never
-  matches raw cookie value.
+  The `sessions` table is also exported from `server/db/schema.ts` for
+  Drizzle queries.
+- **Auth refactor** (`server/utils/auth.ts`):
+  - `setSessionUserId(event, userId)` is now **async** — generates a
+    32-byte token, `id = SHA-256(token).hex`, inserts the session row,
+    sets the cookie to the raw token. Callers must `await`.
+  - `getCurrentUser(event)` reads the cookie, hashes it, looks up the
+    session, rejects if `expires_at < now()` or `revoked_at IS NOT NULL`,
+    and bumps `last_seen_at` with a **5-min in-process debounce** (per-
+    session `Map`, lost on restart — acceptable: the first request after
+    a restart always writes).
+  - `clearSessionCookie(event)` is now **async** — revokes the session
+    row, then deletes the cookie. Callers must `await`.
+  - `revokeAllOtherSessions(userId, keepId)` for the PIN-change flow.
+  - `TOKEN_LENGTH = 43` is the legacy-vs-token discriminator (no pattern
+    matching, no hardcoded userIds). Legacy cookies (e.g. `u_vimal`) are
+    shorter.
+  - `hashSessionToken` + `newSessionToken` exported for testability.
+  - `readSessionMeta(event)` reads UA + IP from the request.
+- **Backward compat: FORCE RE-LOGIN ON DEPLOY, not dual-path.** Old
+  cookies (which held the userId directly) are no longer valid; both
+  users re-login once with their PIN. The plan's original dual-path
+  (a 30-day fallback in `getCurrentUser` that accepted both the old
+  `u_*` cookie and the new 43-char token) was dropped: ~40 lines of
+  code and a testing surface for a UX benefit measured in seconds per
+  person for a 2-user household app behind Tailscale Funnel. The
+  CHANGELOG has a callout for the first deploy.
+- **Async callers** (must `await`):
+  - `server/api/auth/login.post.ts`: `await setSessionUserId`.
+  - `server/api/auth/setup-pin.post.ts`: `await setSessionUserId` AND
+    `await revokeAllOtherSessions(userId, currentSessionId)`. **Order
+    matters**: revoke (using the current cookie's hash) **first**, then
+    create the new session. Reverse order would miss the old session
+    because the new cookie's hash wouldn't match it. A comment in the
+    code explains why.
+  - `server/api/auth/logout.post.ts`: handler is now `async`, awaits
+    `clearSessionCookie`. Without this, the response is sent before the
+    DB write completes, leaving the session row "active" until expiry.
+- **Hard-reload logout, not Pinia `$reset()`** (`stores/auth.ts`). The
+  composables (`useAccounts`, `useTransactions`, `useDashboard`, etc.)
+  wrap `useState`, not Pinia stores — calling `$reset()` on them crashes
+  with `TypeError: store.$reset is not a function`. Hard-reload to
+  `/login` resets every `useState` ref, every other Pinia store, and
+  every cached composable in one step. ~200ms blank screen, much
+  simpler than maintaining a list of every `useState` key as the app
+  grows. `useUiStore` (theme) is deliberately left alone — theme is a
+  device preference, not user data.
+- **Periodic cleanup** — new `scripts/cleanup-sessions.mjs` (exports
+  `runCleanup()` for testability) + `systemd/budget-tracker-session-cleanup.{service,timer}`
+  (monthly, 1st @ 04:00, `User=budget`, `Type=oneshot`). Deletes
+  sessions expired >30d ago, OR revoked >7d ago. `scripts/deploy.sh`
+  auto-enables the timer (the only one that gets auto-enabled on
+  deploy; the export and binary-backup timers stay manual).
+- **Backup/restore updates** (PR 2 had touched these too):
+  - `scripts/backup-binary.mjs` `EXPECTED_TABLES` is now 6 entries
+    (`sessions` added). Restoring a binary backup preserves active
+    sessions — users with a matching cookie stay authenticated.
+  - `scripts/export.mjs` snapshot version bumped 1.1 → 1.2; adds
+    `sessions` field.
+  - `scripts/import.ts` accepts v1.0/v1.1/v1.2; `sessions` defaults to
+    `[]`; the FK-safe wipe + re-insert order is updated to put
+    `sessions` last (after its `user_id` target exists).
+- **Tests** (`tests/server/auth.test.ts`, 24 new tests, +2 updates to
+  `tests/server/backup.test.ts` for the new table count):
+  - `hashSessionToken` is stable, 64-char hex, matches `crypto`.
+  - `newSessionToken` is 43 chars, `base64url`, never collides in 100
+    trials.
+  - `TOKEN_LENGTH = 43` discriminator; legacy `u_vimal` / `u_pavithra`
+    IDs are shorter.
+  - `shouldBumpLastSeen`: first-call / within-window / at-window /
+    past-window / per-session isolation.
+  - `sessions` table schema: columns, indexes, FK CASCADE, FK reject.
+  - Session id is the SHA-256 hash, not the raw token.
+  - `revokeAllOtherSessions` SQL: keep-one, cross-user isolation, no
+    double-revoke.
+
+**Decisions called out:**
+
+- **5-min `last_seen` debounce, not 60s, not no-debounce.** SQLite is
+  single-writer; reducing the number of writes still matters even at
+  this scale. 5 minutes keeps the write rate at most 12/hr per session.
+  The Map for the debounce is bounded by active session count (~10 for
+  2 users, ~1KB total). Lost on restart — acceptable: the first
+  request after restart always writes.
+- **Hard-reload on logout, not Pinia `$reset()`.** The composables wrap
+  `useState`, not Pinia stores; `$reset()` would crash. Hard-reload is
+  simpler and more robust.
+- **No dual-path for legacy cookies; force re-login on deploy.** The
+  10-second-per-user inconvenience is the right tradeoff vs ~40 lines
+  of dual-path code and a testing surface.
 
 ### PR 5 — Performance: compound index only
 
@@ -454,12 +515,26 @@ cap). Both can land in a later release once we have evidence they're needed.
    answer ("does prod need `unsafe-eval` or not") is pending the first
    Pi deploy of v1.6.0 — the user hits the three dashboard charts and
    checks the console.
-3. **Old `vs_session` cookies carry the userId, not a token.** Dual-path in
-   `getCurrentUser` for one release. CHANGELOG entry. Remove legacy path
-   after 30d.
-4. **Hashed session IDs must round-trip correctly.** A bug in the SHA-256
-   step silently 401s every request. Test asserts: cookie value ≠ DB
-   value, and the hash lookup is exact.
+3. **Old `vs_session` cookies carry the userId, not a token.** **Mitigated
+   in v1.6.0 (PR 4):** the original plan was a 30-day dual-path in
+   `getCurrentUser` (accept both the old `u_*` cookie and the new
+   43-char token, then create a session row on-demand for legacy
+   cookies). The plan was dropped: the dual-path was ~40 lines of
+   code + testing surface for a UX benefit measured in seconds per
+   person for a 2-user household app behind Tailscale Funnel. v1.6.0
+   ships **no** dual-path — every existing session is invalidated by
+   the deploy; both users re-login once. `TOKEN_LENGTH = 43` is the
+   legacy-vs-token discriminator (no pattern matching, no hardcoded
+   userIds). The CHANGELOG has a callout for the first deploy.
+4. **Hashed session IDs must round-trip correctly.** **Mitigated in
+   v1.6.0 (PR 4):** `tests/server/auth.test.ts` asserts that the
+   session id is the SHA-256 hash (not the raw token), that
+   `hashSessionToken` is stable, 64-char hex, and matches `crypto`,
+   and that the hash lookup is exact. The `TOKEN_LENGTH = 43`
+   discriminator in `server/utils/auth.ts` makes the legacy path
+   a no-op (legacy `u_vimal` / `u_pavithra` IDs are shorter, so
+   `getCurrentUser` rejects them as invalid tokens — the user is
+   forced to re-login).
 5. **Binary backup holds a read lock for the copy duration.** `db.backup()`
    uses SQLite's online backup API (safe), but a killed-mid-copy leaves a
    partial file. `PRAGMA integrity_check` after copy catches this.

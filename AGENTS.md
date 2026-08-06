@@ -21,9 +21,10 @@ pnpm dev                          # http://localhost:3000
 
 - `pnpm db:reset` — wipes `$NUXT_DB_PATH` (defaults to `./data/dev.db`), then
   re-migrates + re-seeds. Local dev only; never run on the Pi.
-- `pnpm test:run` for the Vitest suite (100 tests; 64 pure-function unit tests for
+- `pnpm test:run` for the Vitest suite (124 tests; 64 pure-function unit tests for
   the financial-math and dashboard-period code, 8 backup integration tests, 17 CSRF
-  middleware tests, 11 CSP middleware tests). `pnpm test` for watch mode.
+  middleware tests, 11 CSP middleware tests, 24 auth tests). `pnpm test` for watch
+  mode.
   Pre-PR sanity check: `pnpm typecheck && pnpm test:run && pnpm build`.
 
 ## Commands cheat sheet
@@ -39,9 +40,10 @@ pnpm dev                          # http://localhost:3000
 | `pnpm db:generate` | `drizzle-kit generate` — produces a new SQL file in `db/migrations/`. |
 | `pnpm db:migrate` | Runs all `db/migrations/*.sql` against the DB. Idempotent. |
 | `pnpm db:seed` | Inserts u_vimal, u_pavithra, and the default category tree. Idempotent. |
-| `pnpm export` | `node scripts/export.mjs [out.json]` — JSON snapshot of all 5 tables (v1.1 snapshot; pre-v1.6.0 snapshots are missing `user_settings` and unsafe to restore). |
-| `pnpm import <file>` | `tsx scripts/import.ts` — WIPES + re-inserts; requires typing `YES`. v1.0 snapshots still restore; `userSettings` defaults to `[]`. |
+| `pnpm export` | `node scripts/export.mjs [out.json]` — JSON snapshot of all 6 tables (v1.2 snapshot; v1.0/v1.1 snapshots still restore with the missing fields defaulting to `[]`). |
+| `pnpm import <file>` | `tsx scripts/import.ts` — WIPES + re-inserts; requires typing `YES`. v1.0/v1.1 snapshots still restore; `userSettings` / `sessions` default to `[]`. |
 | `node scripts/backup-binary.mjs [out.db.bak]` | Full binary backup via `better-sqlite3`'s online backup API. Captures everything (data, schema, WAL, `__drizzle_migrations`). Runs `PRAGMA integrity_check` on the copy. On the Pi, the systemd timer (`budget-tracker-binary-backup.timer`) runs this at 03:00 daily. |
+| `node scripts/cleanup-sessions.mjs` | Delete sessions expired >30d ago or revoked >7d ago. On the Pi, `scripts/deploy.sh` auto-enables `budget-tracker-session-cleanup.timer` (monthly, 1st @ 04:00) — the only timer that gets auto-enabled. |
 | `./scripts/deploy.sh` | Local → Pi: build, rsync, prod install, fix native better-sqlite3, migrate, restart. Idempotent. |
 | `./scripts/setup-pi.sh` | One-time Pi provisioning (Node 24, pnpm, rclone, `budget` system user). |
 | `./scripts/export.sh` | JSON export + rclone push to Google Drive. Works from dev machine or Pi. |
@@ -119,6 +121,52 @@ the bundled one** (the `.output` was built on the dev machine's arch) →
 `migrate.mjs` as user `budget` → install systemd units + fail2ban configs →
 restart service. Verify via SSH curl to `127.0.0.1:3000/api/auth/me` (expect
 401 — that proves the app is up; the dev box can't reach 127.0.0.1 on the Pi).
+
+## Session management (v1.6.0+)
+
+- **Cookie holds a 43-char `base64url(32-byte)` random token; DB holds
+  `SHA-256(token).hex` as the session row's primary key.** A leaked DB
+  file yields only hashes, not bearer tokens. The cookie value ≠ the DB
+  value, always.
+- **`TOKEN_LENGTH = 43` is the legacy-vs-token discriminator.** Legacy
+  cookies (e.g. `u_vimal`) are shorter and rejected as invalid tokens
+  by `getCurrentUser`. No pattern matching, no hardcoded userIds.
+- **`setSessionUserId` and `clearSessionCookie` are async.** All
+  callers in `server/api/auth/*` must `await` them. `logout.post.ts`
+  handler is `async` — without `await`ing the DB revoke, the response
+  is sent before the write completes, leaving the session row "active"
+  until expiry.
+- **5-min `last_seen_at` debounce.** `server/utils/auth.ts` keeps a
+  per-session `Map` (`shouldBumpLastSeen`) so SQLite's single-writer
+  doesn't see a write per request. Bounded by active session count
+  (~10 for 2 users, ~1KB total). Lost on restart — acceptable; the
+  first request after a restart always writes.
+- **PIN change revokes other sessions in the right order.**
+  `server/api/auth/setup-pin.post.ts` revokes (using the current
+  cookie's hash) **first**, then creates the new session. Reverse
+  order would miss the old session because the new cookie's hash
+  wouldn't match it. A comment in the code explains why.
+- **Hard-reload on logout, not Pinia `$reset()`.** `stores/auth.ts`
+  does a full navigation to `/login` on logout. The composables
+  (`useAccounts`, `useTransactions`, `useDashboard`, etc.) wrap
+  `useState`, not Pinia stores — calling `$reset()` on them crashes
+  with `TypeError: store.$reset is not a function`. Hard-reload resets
+  every `useState` ref, every other Pinia store, and every cached
+  composable in one step. `useUiStore` (theme) is deliberately left
+  alone — theme is a device preference, not user data.
+- **No dual-path for legacy cookies; force re-login on deploy.** v1.6.0
+  invalidates every existing session on first deploy. Both users
+  re-login once. The alternative (a 30-day dual-path in
+  `getCurrentUser`) was ~40 lines of code + testing surface for a UX
+  benefit measured in seconds per person for a 2-user household app
+  behind Tailscale Funnel. The CHANGELOG has a callout for the first
+  deploy.
+- **Periodic cleanup** (`scripts/cleanup-sessions.mjs` +
+  `systemd/budget-tracker-session-cleanup.{service,timer}`) runs
+  monthly, 1st @ 04:00. Deletes sessions expired >30d ago, OR revoked
+  >7d ago. `scripts/deploy.sh` auto-enables the timer (the only one
+  that gets auto-enabled on deploy; export and binary-backup stay
+  manual).
 
 ## Security model (v1.6.0+)
 
@@ -302,11 +350,16 @@ Both scripts `process.exit(1)` on any failure including `PRAGMA integrity_check`
 
 - `nuxt.config.ts` — modules, PWA config (intentional, with comments), runtime
   config keys.
-- `server/db/schema.ts` — the 4 main tables + `user_settings`. Enum values on
-  `accounts.type`, `categories.type`, `transactions.type` are the source of
-  truth for those string domains.
-- `server/utils/auth.ts` + `server/api/auth/login.post.ts` + `stores/auth.ts` —
-  end-to-end picture of the auth flow + error envelope.
+- `server/db/schema.ts` — the 4 main tables + `user_settings` + `sessions`.
+  Enum values on `accounts.type`, `categories.type`, `transactions.type`
+  are the source of truth for those string domains.
+- `server/utils/auth.ts` + `server/api/auth/{login,logout,setup-pin}.post.ts`
+  + `stores/auth.ts` — end-to-end picture of the auth flow + error envelope.
+  v1.6.0's session model lives here: cookie holds a 43-char `base64url(32-byte)`
+  random token; DB holds `SHA-256(token).hex`; `setSessionUserId` and
+  `clearSessionCookie` are async (callers must `await`); `TOKEN_LENGTH = 43`
+  is the legacy-vs-token discriminator; `shouldBumpLastSeen` debounces
+  `last_seen_at` writes to 5 min.
 - `composables/useAccountBalances.ts` — the balance/liquidity math; the
   dashboard reads these directly from the server.
 - `scripts/deploy.sh` — exact deploy sequence + the better-sqlite3 native
@@ -323,15 +376,29 @@ Both scripts `process.exit(1)` on any failure including `PRAGMA integrity_check`
   the change.
 - `.github/workflows/{ci,build-and-test}.yml` — the CI chain. Read both
   before changing anything in CI.
-- `scripts/{export,import,backup-binary}.mjs` + `scripts/import.ts` — the
-  two-layer backup model. JSON snapshot (5 tables, v1.1) for human-readable
-  Drive backup; binary backup (full DB, `__drizzle_migrations` included) for
-  schema-safe local backup. Both run `PRAGMA integrity_check` on the
-  source/copy and `process.exit(1)` on `not ok`. `tests/server/backup.test.ts`
-  exercises both.
+- `scripts/{export,import,backup-binary,cleanup-sessions}.mjs` + `scripts/import.ts` —
+  the two-layer backup model + the session cleanup. JSON snapshot (6 tables, v1.2)
+  for human-readable Drive backup; binary backup (full DB, `__drizzle_migrations`
+  included) for schema-safe local backup. Both run `PRAGMA integrity_check` on
+  the source/copy and `process.exit(1)` on `not ok`. Session cleanup deletes
+  rows expired >30d or revoked >7d. `tests/server/backup.test.ts` exercises
+  both backup layers.
 - `systemd/budget-tracker-{export,binary-backup}.{service,timer}` — the
   two nightly backup schedules (JSON at 02:00, binary at 03:00). Both are
   `Type=oneshot`; failures surface in `journalctl -u <unit>`.
+- `systemd/budget-tracker-session-cleanup.{service,timer}` — the monthly
+  session-cleanup schedule (1st @ 04:00). `scripts/deploy.sh` auto-enables
+  this timer (the only one that gets auto-enabled on deploy); the export
+  and binary-backup timers stay manual. The `User=budget` `Type=oneshot`
+  service runs `node /var/lib/budget-tracker/scripts/cleanup-sessions.mjs`.
+- `tests/server/auth.test.ts` (24 tests) — the session model test
+  suite. `hashSessionToken` stability, `newSessionToken` 43-char base64url
+  + no-collision-in-100-trials, `TOKEN_LENGTH = 43` discriminator vs
+  legacy `u_vimal` / `u_pavithra` IDs, `shouldBumpLastSeen` debounce
+  (first-call / within-window / at-window / past-window / per-session
+  isolation), `sessions` table schema (columns, indexes, FK CASCADE, FK
+  reject), `revokeAllOtherSessions` SQL (keep-one, cross-user isolation,
+  no double-revoke).
 - `server/middleware/{00.csrf,01.auth,99.security-headers}.ts` + the
   `server/utils/{csrf,csp}.ts` pure helpers — the three Nitro middlewares
   (in filename-prefix order: CSRF first, auth second, security headers
