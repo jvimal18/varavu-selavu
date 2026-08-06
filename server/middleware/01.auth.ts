@@ -1,6 +1,11 @@
 /**
  * Global server middleware: enforce auth on /api/* except /api/auth/*.
  * Page-level auth is handled in layouts/middleware.
+ *
+ * Named 01.auth.ts so it runs AFTER `00.csrf.ts` (which rejects
+ * cross-origin requests before the DB lookup) and BEFORE
+ * `99.security-headers.ts` (so 401 responses also get the security
+ * headers).
  */
 import { defineEventHandler, getRequestURL, getMethod } from 'h3'
 import { getCurrentUser } from '../utils/auth'
