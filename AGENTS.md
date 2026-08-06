@@ -21,7 +21,9 @@ pnpm dev                          # http://localhost:3000
 
 - `pnpm db:reset` — wipes `$NUXT_DB_PATH` (defaults to `./data/dev.db`), then
   re-migrates + re-seeds. Local dev only; never run on the Pi.
-- No test suite exists. Verification is `pnpm typecheck` + manual `pnpm dev`.
+- `pnpm test:run` for the Vitest suite (64 tests; pure-function unit tests for
+  the financial-math and dashboard-period code). `pnpm test` for watch mode.
+  Pre-PR sanity check: `pnpm typecheck && pnpm test:run && pnpm build`.
 
 ## Commands cheat sheet
 
@@ -29,7 +31,10 @@ pnpm dev                          # http://localhost:3000
 |---|---|
 | `pnpm dev` | Runs `predev` → regenerates `public/version.json` from CHANGELOG, then `nuxt dev`. |
 | `pnpm build` | `prebuild` → `nuxt build`. Output goes to `.output/`. |
-| `pnpm typecheck` | `nuxt typecheck` (the only static check). |
+| `pnpm typecheck` | `nuxt typecheck`. |
+| `pnpm test` | Vitest in watch mode. |
+| `pnpm test:run` | Vitest one-shot. What CI runs. |
+| `pnpm test:watch` | Alias for `pnpm test`. |
 | `pnpm db:generate` | `drizzle-kit generate` — produces a new SQL file in `db/migrations/`. |
 | `pnpm db:migrate` | Runs all `db/migrations/*.sql` against the DB. Idempotent. |
 | `pnpm db:seed` | Inserts u_vimal, u_pavithra, and the default category tree. Idempotent. |
@@ -125,9 +130,50 @@ restart service. Verify via SSH curl to `127.0.0.1:3000/api/auth/me` (expect
 - **`PWA devOptions.enabled` is `false`.** Do not flip it; turning it on brings
   back the `ENOENT … workbox-<hash>.js` console noise in dev. Production SWs
   are unaffected.
-- **`DECISIONS.md` and `ROADMAP.md` are gitignored** (per v1.4.2). They are
-  the user's personal scratch — don't read, edit, or commit them. The
-  canonical release history is `CHANGELOG.md`.
+- **`DECISIONS.md` is gitignored** (per v1.4.2). Personal scratch — don't read,
+  edit, or commit it. `ROADMAP.md` is now tracked (reclassified in v1.6.0) and
+  is fine to read/edit/commit. The three project docs are `AGENTS.md` (this
+  file — agent-facing), `CHANGELOG.md` (canonical release history), and
+  `ROADMAP.md` (at-a-glance phase status + per-PR plan + what's next).
+- **`ROADMAP.md` is generated/curated, not auto-generated.** It carries real
+  design intent (the per-PR rationale, the "ordering rationale" callouts,
+  the at-a-glance status table) — when you ship a PR, update both the
+  per-section status (`⏳`/`🔄`/`✅`) and the "Phase N — Implementation plan"
+  row for the PR you just shipped, and add a corresponding `## [vX.Y.Z]`
+  section at the top of `CHANGELOG.md`. The predev/prebuild hook only
+  parses `CHANGELOG.md` for `public/version.json`; `ROADMAP.md` is
+  hand-maintained.
+- **CI chain: hosted primary, self-hosted+Docker fallback.** `.github/workflows/ci.yml`
+  has two jobs: `hosted` (ubuntu-latest) and `self-hosted`
+  (`[self-hosted, linux, dev]`, `needs: hosted, if: failure()`). The
+  self-hosted runner is registered as `vimal-dev` (pool `Default`) and runs
+  on `vimal-hp` (`/home/vimal/actions-runner`). The runner is online but
+  can get stuck in long HTTP back-off if GitHub Actions' Azure East US
+  endpoint (`run-actions-2-azure-eastus.actions.githubusercontent.com`) has
+  outages — symptom is the runner going `offline` in the API while the
+  listener process is still alive; fix is `sudo systemctl restart
+  actions.runner.jvimal18-varavu-selavu.vimal-dev.service`. Don't switch
+  to a hosted-only workflow to "fix" this — the chain is the whole point
+  (during an outage hosted can't pick up jobs either).
+- **Branch protection on `main` must require the `"Build & Test (self-hosted
+  fallback)"` check** (not the hosted one). The fallback check is `skipped`
+  during normal operation, which counts as passing for branch protection,
+  so merges stay unblocked. During an outage the fallback actually runs and
+  gates the merge.
+- **`pnpm/action-setup` must NOT take an explicit `version` when
+  `package.json` has `packageManager`.** `pnpm@9.12.0` is pinned via
+  `packageManager` in `package.json`; passing both produces
+  `ERR_PNPM_BAD_PM_VERSION` at setup time. The reusable workflow
+  (`.github/workflows/build-and-test.yml`) relies on the action reading
+  `packageManager` from `package.json` (default `package_json_file` input).
+  If you ever need to override (e.g., a security bump), set the
+  `packageManager` field, not the action's `version`.
+- **CI actions are pinned to `@v5` (Node 24), not `@v4`.** `actions/checkout`,
+  `pnpm/action-setup`, `actions/cache` v4 versions pin `using: node20` and
+  GitHub is force-upgrading them to Node 24 with a deprecation warning in
+  every job log. v5 pins `using: node24` and silences the noise. Don't
+  downgrade to v4 even for "stability" — v5 is what every other project
+  is on by now.
 - **`data/`, `*.db`, `scripts/.env`, `exports/`, `.env` are all gitignored.**
   Local-only. `data/dev.db` is the dev DB; do not delete without also
   resetting the seed if you wanted a clean slate.
@@ -167,3 +213,12 @@ restart service. Verify via SSH curl to `127.0.0.1:3000/api/auth/me` (expect
 - `CHANGELOG.md` — the recent "what changed and why" narrative; useful before
   making changes in an area that has had recent churn (PWA prompt in v1.5.0,
   liquidity tiles in v1.4.0, rate limiting in v1.3.0).
+- `ROADMAP.md` — at-a-glance phase status, per-PR plan, "what's next" backlog.
+  Read this when picking up a new piece of work to understand where a change
+  fits in the overall arc.
+- `vitest.config.ts` + `tests/unit/*.test.ts` — how the test suite is wired.
+  If you're touching `useAccountBalances`, `localISODate`, or
+  `dashboardPeriods`, the matching test file is the cheapest way to verify
+  the change.
+- `.github/workflows/{ci,build-and-test}.yml` — the CI chain. Read both
+  before changing anything in CI.
