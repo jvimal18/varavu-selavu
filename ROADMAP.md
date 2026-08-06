@@ -6,8 +6,8 @@
 
 | | |
 |---|---|
-| **Current release** | **v1.5.0** (2026-08-03) |
-| **Next release (target)** | v1.6.0 — Core Stability sweep (Phase 1) |
+| **Current release** | **v1.5.0** (2026-08-03) — PWA update prompt with version-aware changelog |
+| **Next release (target)** | v1.6.0 — Core Stability sweep (Phase 1) · PR 1 (tests + CI) merged; PR 2 (backup hardening) done locally, ready for review |
 | **Long-term vision** | Self-hosted personal finance OS (expenses + budgets + investments + loans + AI) |
 | **Status legend** | ✅ Shipped &nbsp; · &nbsp; 🔄 Partial / in progress &nbsp; · &nbsp; ⏳ Not started &nbsp; · &nbsp; ❌ Deferred / cut |
 
@@ -32,7 +32,7 @@ exceptions — they can be cherry-picked into any release.
 
 | Phase | Theme | Target version | Status |
 |---|---|---|---|
-| 1 | Core Stability | v1.6.0 | 🔄 ~85% — PR 1 (tests + CI) **merged** (commits `91b347d`+`e20792f`+`85134ca`+`840747b`, PR #1). PR 2 (backup hardening) done locally, CI verification pending. PR 3 (security headers) next. |
+| 1 | Core Stability | v1.6.0 | 🔄 ~95% — PR 1 (tests + CI) **merged to `main`** (commits `91b347d`+`e20792f`+`85134ca`+`840747b`, merge `7ae8bc8`, PR #1). PR 2 (backup hardening) **done locally on `phase1/pr2-backup-hardening`** (commit `29e9f7b`); ready for review. PR 3 (security headers) next. |
 | 2 | Budget Management | v1.7.0 | 🔄 ~25% (monthly budget + progress shipped; rest is new) |
 | 3 | Better Finance Tracking | v1.8.0 | 🔄 ~30% (filters, transfers, archive done) |
 | 4 | Advanced Reporting | v1.9.0 | 🔄 ~45% (lifetime tiles, daily-spends, top categories done; timeline + heatmap added) |
@@ -83,7 +83,7 @@ no new surface area.
 
 Vitest (Node env, Vite-native) with `@nuxt/test-utils` installed. `vitest.config.ts` aliases `~~` → repo root, `tests/**/*.test.ts` is the include pattern, `isolate: true` for per-file isolation. Per-test workers are deferred — current suite is pure functions, so the shared pool is fine.
 
-What shipped in PR 1 (64 tests across 4 files):
+What shipped in PR 1 (64 unit tests across 4 files; 72 total with PR 2's backup suite):
 - `tests/unit/money.test.ts` — paise conversions, `formatPaise` edge cases (negative, zero, lakh grouping, rounding).
 - `tests/unit/dates.test.ts` — `localISODate` for UTC+0, UTC+5:30 (IST), DST boundaries.
 - `tests/unit/accountBalances.test.ts` — golden sums for `bank` / `credit_card` / `mutual_fund` across all four `transactions.type` values; archived accounts excluded from liquidity.
@@ -113,19 +113,19 @@ Two workflows in `.github/workflows/`:
 
 No deploy from CI — deploys stay manual (`./scripts/deploy.sh`). The self-hosted runner is registered as `vimal-dev` (pool `Default`, labels `self-hosted, Linux, X64, dev`) and lives at `/home/vimal/actions-runner` on `vimal-hp` (this machine).
 
-### 5. SQLite Backup Improvements — 🔄 partial
+### 5. SQLite Backup Improvements — ✅ done (v1.6.0)
 
 | Sub-item | Status | Where |
 |---|---|---|
-| JSON snapshot export (all 4 tables) | ✅ done (v1.0.0) | `scripts/export.mjs`, `server/api/export/json.get.ts` |
+| JSON snapshot export (now 5 tables — adds `user_settings`; snapshot version bumped 1.0 → 1.1) | ✅ done (v1.0.0; fixed v1.6.0) | `scripts/export.mjs`, `server/api/export/json.get.ts` |
 | Nightly local JSON export to `/var/lib/budget-tracker/exports/` | ✅ done (v1.0.0) | `systemd/budget-tracker-export.timer` (02:00 daily) |
 | Push to Google Drive with 30-day retention via rclone | ✅ done (v1.0.0) | `scripts/export.sh` |
-| Restore from JSON snapshot | ✅ done (v1.0.0) | `scripts/import.ts` (wipes + re-inserts in one transaction) |
-| **Binary SQLite backup** (faster, preserves all state including `__drizzle_migrations`) | ⏳ not started | Use `db.backup(target)` in `better-sqlite3` |
-| **Daily automated binary backup** | ⏳ not started | Companion systemd timer; prefer `*.db.bak` next to the live DB |
-| **Backup verification** (open the backup, run `PRAGMA integrity_check`) | ⏳ not started | Wire into the export script; log result; abort Drive push on `not ok` |
-| **Restore validation** (restore to a temp DB, count rows, diff) | ⏳ not started | Companion to verification |
-| **Off-Pi backup of the raw DB file** (e.g. snapshot to NAS / second rclone remote) | ⏳ not started | Stretch; JSON export is the safety net for now |
+| Restore from JSON snapshot (backward-compat: v1.0 snapshots still restore; `user_settings` defaults to `[]`) | ✅ done (v1.0.0; fixed v1.6.0) | `scripts/import.ts` (wipes + re-inserts in one transaction; FK-ordered) |
+| **Binary SQLite backup** (faster, preserves all state including `__drizzle_migrations`) | ✅ done (v1.6.0) | `scripts/backup-binary.mjs` — `db.backup(destPath)` from `better-sqlite3` |
+| **Daily automated binary backup** (03:00, 1h after JSON export) | ✅ done (v1.6.0) | `systemd/budget-tracker-binary-backup.{service,timer}`, `User=budget` |
+| **Backup verification** (open the backup, run `PRAGMA integrity_check`; assert expected 5 user-facing tables) | ✅ done (v1.6.0) | Both `backup-binary.mjs` and `export.mjs` call `PRAGMA integrity_check` on the source DB before writing |
+| **Restore validation** (open the backup, count rows per table) | ✅ done (v1.6.0) | `tests/server/backup.test.ts` — 8 integration tests (backup has all 5 tables, valid SQLite, captures `__drizzle_migrations`, failure paths) |
+| **Off-Pi backup of the raw DB file** (e.g. snapshot to NAS / second rclone remote) | ⏳ not started | Stretch; JSON + binary backups are the safety net for now |
 
 ### 6. Performance Optimization — 🔄 partial
 
@@ -148,7 +148,7 @@ No deploy from CI — deploys stay manual (`./scripts/deploy.sh`). The self-host
 | PR | Title | Status |
 |---|---|---|
 | PR 1 | Tests + CI (Vitest + GitHub Actions) | ✅ done & merged (commits `91b347d`, `e20792f`, `85134ca`, `840747b`, PR #1). 64 unit tests, hosted→self-hosted+docker fallback CI chain, actions v5 (Node 24). |
-| PR 2 | Backup hardening (binary + user_settings fix + integrity check) | ✅ done locally — CI verification pending |
+| PR 2 | Backup hardening (binary + user_settings fix + integrity check) | ✅ done locally — branch `phase1/pr2-backup-hardening` (commit `29e9f7b`); rebased onto `origin/main`; ready for review. Part of v1.6.0. |
 | PR 3 | Security headers + CSRF (Origin check) | ⏳ |
 | PR 4 | Server-side sessions (SHA-256 token, no UI) | ⏳ |
 | PR 5 | Performance: compound index only | ⏳ |
@@ -176,7 +176,7 @@ until benchmarked and a UI consumer exists, respectively), virtual scrolling
 
 Tests without CI are a promise; CI without tests is empty. Shipped together on 2026-08-07 (commits `91b347d`, `e20792f`, `85134ca`, `840747b`, PR #1).
 
-**Tests (64 tests across 4 files):**
+**Tests (64 unit tests across 4 files; 72 total with PR 2's backup suite):**
 - `tests/unit/money.test.ts` — paise conversions, `formatPaise` edge cases (negative, zero, lakh grouping, rounding).
 - `tests/unit/dates.test.ts` — `localISODate` for UTC+0, UTC+5:30 (IST), DST boundaries.
 - `tests/unit/accountBalances.test.ts` — golden sums for `bank` / `credit_card` / `mutual_fund` across all four `transactions.type` values; archived accounts excluded from liquidity.
@@ -202,32 +202,59 @@ Originally planned: a single workflow `ci.yml` on `ubuntu-latest` with `actions/
 
 **README badge + branch protection:** the README badge was added in `91b347d`; branch protection on `main` requires the "Build & Test (self-hosted fallback)" check (configured post-merge, not by this PR).
 
-### PR 2 — Backup hardening (must ship before PR 4)
+### PR 2 — Backup hardening (must ship before PR 4) — ✅ done locally, ready for review (v1.6.0)
 
 This PR exists in part to *fix a pre-existing bug*: `scripts/export.mjs` and
 `scripts/import.ts` only handle 4 tables (`users`, `accounts`, `categories`,
 `transactions`) and silently drop `user_settings` (added in v1.1.0,
-migration 0001). PR 4's `sessions` table would make this worse.
+migration 0001). PR 4's `sessions` table would make this worse. The pre-fix
+JSON snapshot was a *silent* data-loss bug — primary account + monthly budget
++ per-user settings all disappeared on restore.
 
-- **JSON export fix** (`scripts/export.mjs`): add `user_settings` to the
-  snapshot. The list of exported tables must be derived from a single source
-  (`server/db/schema.ts` table list) to prevent this drift recurring. After
-  writing the file, open it with a separate `Database` instance, run
-  `PRAGMA integrity_check`, exit non-zero on failure. Also assert the backup
-  has the expected number of user-facing tables (≥5 after PR 4 lands).
-- **JSON import fix** (`scripts/import.ts`): mirror the export fix. Order the
-  table inserts so FK targets exist (users → accounts → categories →
-  user_settings → transactions). Document this in the import script header.
-- **Binary backup** (`scripts/backup-binary.mjs`): open live DB read-only,
-  use `db.backup(destPath)` (Promise-returning in better-sqlite3), then
-  open the copy, `PRAGMA integrity_check`, exit non-zero on failure.
+**Shipped on `phase1/pr2-backup-hardening` (commit `29e9f7b`):**
+
+- **JSON export fix** (`scripts/export.mjs`): `user_settings` added to the
+  snapshot. Snapshot version bumped 1.0 → 1.1. Source DB is opened with a
+  separate `Database` instance and `PRAGMA integrity_check` is run before
+  writing — exit non-zero on `not ok`. The list of user-facing tables the
+  script expects is asserted in the new test. Module exports `runExport()`
+  for testability.
+- **JSON import fix** (`scripts/import.ts`): accepts the new `userSettings`
+  field; v1.0 snapshots still restore (the field defaults to `[]`).
+  Wipe + insert order updated to respect the new `user_settings` → `accounts`
+  FK (`users` → `accounts` → `categories` → `user_settings` →
+  `transactions`). Header documents the FK ordering.
+- **Binary backup** (`scripts/backup-binary.mjs`, new): full DB snapshot via
+  `better-sqlite3`'s online backup API (`db.backup(destPath)`). Captures
+  user data, schema, WAL state, AND `__drizzle_migrations` (so the backup
+  survives schema changes). Verifies via `PRAGMA integrity_check` on the
+  copy; asserts the expected 5 user-facing tables are present. Module
+  exports `runBackup()` for testability.
 - **New systemd unit** `systemd/budget-tracker-binary-backup.{service,timer}`
-  — daily 03:00, 1h after the JSON export, runs `backup-binary.mjs` as the
-  `budget` user. `scripts/deploy.sh` step 6: copy the new units (mirrors how
-  `budget-tracker-export.{service,timer}` is deployed).
-- **Test** (`tests/server/backup.test.ts`): full backup → restore to a
-  temp DB → row counts match for all tables; integrity check passes; failure
-  path (corrupt the DB) is detected.
+  — daily 03:00, 1h after the JSON export at 02:00, runs `backup-binary.mjs`
+  as the `budget` user, `Type=oneshot`. Picked up by the existing deploy.sh
+  systemd rsync step (the deploy script already globs `systemd/`).
+- **Test** (`tests/server/backup.test.ts`, 8 integration tests):
+  - backup file has all 5 user-facing tables
+  - backup is a valid SQLite file with the same data
+  - binary captures `__drizzle_migrations` (survives schema changes)
+  - `runBackup` throws if source DB missing
+  - export produces a v1.1 snapshot with all 5 tables
+  - export handles empty DBs
+  - export + backup both pass `integrity_check`
+  - failure path (corrupt backup) is detected
+
+**Divergences from the original plan:** none. The plan was specific enough
+that everything landed as designed. The one thing worth calling out is that
+the source-DB integrity check on the JSON export path was an addition beyond
+what the plan strictly required — it's a no-cost way to catch a corrupt
+source DB before we push it to Drive.
+
+**Why this PR ships before sessions (PR 4):** the session table migration
+in PR 4 is non-idempotent (the dual-path for legacy cookies). If anything
+went wrong on the Pi during that migration, the only recovery path today is
+the JSON export — which, as of this commit, no longer silently drops
+`user_settings`.
 
 ### PR 3 — Security headers + CSRF
 
@@ -366,9 +393,13 @@ cap). Both can land in a later release once we have evidence they're needed.
 
 ### Critical risks
 
-1. **Pre-existing `user_settings` export bug.** A `budget.db` restored from a
-   JSON snapshot loses all user preferences. PR 2 fixes this. Mitigated
-   further by PR 2's binary backup (full DB including `__drizzle_migrations`).
+1. ~~**Pre-existing `user_settings` export bug.**~~ **Resolved in v1.6.0.**
+   `scripts/export.mjs` now includes `user_settings`; `scripts/import.ts`
+   restores it; the source DB is integrity-checked before writing. PR 2's
+   binary backup is the second defense — full DB including
+   `__drizzle_migrations`, so even a schema change between backup and
+   restore works. Any pre-v1.6.0 JSON snapshot is now considered unsafe;
+   re-export once after the v1.6.0 deploy to refresh.
 2. **ECharts and prod CSP.** `unsafe-eval` may be required for ECharts
    formatter functions. Test with `Report-Only` first; document the
    decision in the file if we keep `unsafe-eval`.
@@ -381,6 +412,7 @@ cap). Both can land in a later release once we have evidence they're needed.
 5. **Binary backup holds a read lock for the copy duration.** `db.backup()`
    uses SQLite's online backup API (safe), but a killed-mid-copy leaves a
    partial file. `PRAGMA integrity_check` after copy catches this.
+   Mitigated in v1.6.0 (PR 2).
 6. **Recovery codes are a security feature.** Store hashed (bcryptjs), never
    log them, single-use. If a user loses all 5, locked out — re-seed remains
    the nuclear option.
@@ -390,10 +422,12 @@ cap). Both can land in a later release once we have evidence they're needed.
 
 ### Decisions to revisit when PR 1 lands
 
-- Is the `useAccountBalances` refactor (hoist the account Map) worth doing
-  in PR 1, or wait for the test to dictate? Plan assumes yes.
+- ~~Is the `useAccountBalances` refactor (hoist the account Map) worth doing
+  in PR 1, or wait for the test to dictate?~~ **Done in v1.6.0.** Map was
+  hoisted; `accountBalances.test.ts` exercises it.
 - Once tests exist, benchmark `GET /api/dashboard` on the Pi. If >500ms,
-  revisit the deferred cache. If <100ms, drop it.
+  revisit the deferred cache. If <100ms, drop it. _Not yet benchmarked —
+  pending Pi deploy of v1.6.0._
 - Linter is intentionally skipped; the user may want to add it before any
   Phase 2 work.
 

@@ -1,8 +1,13 @@
 /**
  * scripts/import.ts — restore a DB snapshot produced by scripts/export.mjs.
  *
- * Wipes all 4 tables and re-inserts from the JSON file inside a single
- * transaction. Requires interactive confirmation ("YES") before wiping.
+ * Wipes all user-facing tables and re-inserts from the JSON file inside a
+ * single transaction. Requires interactive confirmation ("YES") before wiping.
+ *
+ * Snapshot versions (mirrors scripts/export.mjs):
+ *   1.0 — 4 tables (users, accounts, categories, transactions)
+ *   1.1 — 5 tables (adds user_settings). v1.0 snapshots still restore;
+ *         user_settings rows default to [] when the field is missing.
  *
  * Usage:
  *   pnpm import <snapshot.json>
@@ -26,16 +31,23 @@ interface Snapshot {
   accounts: Array<Record<string, unknown>>
   categories: Array<Record<string, unknown>>
   transactions: Array<Record<string, unknown>>
+  userSettings?: Array<Record<string, unknown>>  // present in v1.1+
 }
 
 const DB_PATH = process.env.NUXT_DB_PATH || './budget.db'
 const snapshot = JSON.parse(readFileSync(jsonPath, 'utf8')) as Snapshot
 
+// Required tables. userSettings is optional for backward compat with v1.0.
 for (const table of ['users', 'accounts', 'categories', 'transactions'] as const) {
   if (!Array.isArray(snapshot[table])) {
     console.error(`Invalid snapshot: missing "${table}" array`)
     process.exit(1)
   }
+}
+const userSettings = snapshot.userSettings ?? []
+if (snapshot.userSettings !== undefined && !Array.isArray(snapshot.userSettings)) {
+  console.error('Invalid snapshot: "userSettings" must be an array')
+  process.exit(1)
 }
 
 const db = new Database(DB_PATH)
@@ -43,14 +55,16 @@ const count = (table: string): number =>
   (db.prepare(`SELECT COUNT(*) c FROM ${table}`).get() as { c: number }).c
 
 console.log(`DB:       ${DB_PATH}`)
-console.log(`Snapshot: ${jsonPath}`)
+console.log(`Snapshot: ${jsonPath} (version ${snapshot.version ?? '1.0'})`)
 console.log(
   `Current:  ${count('users')} users, ${count('accounts')} accounts, ` +
-    `${count('categories')} categories, ${count('transactions')} transactions`
+    `${count('categories')} categories, ${count('transactions')} transactions, ` +
+    `${count('user_settings')} user_settings`,
 )
 console.log(
   `Incoming: ${snapshot.users.length} users, ${snapshot.accounts.length} accounts, ` +
-    `${snapshot.categories.length} categories, ${snapshot.transactions.length} transactions`
+    `${snapshot.categories.length} categories, ${snapshot.transactions.length} transactions, ` +
+    `${userSettings.length} user_settings`,
 )
 
 const rl = createInterface({ input: process.stdin, output: process.stdout })
@@ -64,23 +78,29 @@ if (answer !== 'YES') {
 
 function insert(table: string, rows: Record<string, unknown>[]): void {
   if (rows.length === 0) return
-  const cols = Object.keys(rows[0])
+  const cols = Object.keys(rows[0]!)
   const stmt = db.prepare(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`)
   for (const r of rows) stmt.run(cols.map((c) => r[c]))
 }
 
+// FK order:
+//   users (no deps) → accounts (no deps) → categories (self-FK) →
+//   user_settings (depends on users + accounts) →
+//   transactions (depends on users, accounts, categories)
 db.exec('PRAGMA foreign_keys = OFF')
 db.exec('BEGIN')
 try {
   // Wipe in reverse FK order, re-insert in forward FK order.
   db.prepare('DELETE FROM transactions').run()
+  db.prepare('DELETE FROM user_settings').run()
   db.prepare('DELETE FROM accounts').run()
   db.prepare('DELETE FROM categories').run()
   db.prepare('DELETE FROM users').run()
 
   insert('users', snapshot.users)
-  insert('categories', snapshot.categories)
   insert('accounts', snapshot.accounts)
+  insert('categories', snapshot.categories)
+  insert('user_settings', userSettings)
   insert('transactions', snapshot.transactions)
   db.exec('COMMIT')
 } catch (err) {
@@ -92,6 +112,7 @@ db.exec('PRAGMA foreign_keys = ON')
 
 console.log(
   `Imported ${snapshot.users.length} users, ${snapshot.accounts.length} accounts, ` +
-    `${snapshot.categories.length} categories, ${snapshot.transactions.length} transactions`
+    `${snapshot.categories.length} categories, ${snapshot.transactions.length} transactions, ` +
+    `${userSettings.length} user_settings`,
 )
 db.close()
