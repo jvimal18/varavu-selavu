@@ -92,6 +92,19 @@ export default defineNuxtConfig({
   runtimeConfig: {
     sessionSecret: process.env.NUXT_SESSION_SECRET || 'dev-only-change-me-in-prod',
     dbPath: process.env.NUXT_DB_PATH || './data/dev.db',
+    // CSRF: comma-separated allowlist of origins permitted to make
+    // state-changing requests to /api/*. Dev default is localhost; prod
+    // MUST be set explicitly — the middleware rejects all requests when
+    // this is empty in production.
+    allowedOrigins: process.env.NUXT_ALLOWED_ORIGINS || (
+      process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000'
+    ),
+    // CSP: when false (the default for new deploys), the security-headers
+    // middleware sets `Content-Security-Policy-Report-Only` instead of
+    // enforcing `Content-Security-Policy`. Flip to enforcing once the
+    // dashboard charts (donut, cash-flow, daily-spends) have been
+    // verified to render without violations. See server/utils/csp.ts.
+    cspEnforce: process.env.NUXT_CSP_ENFORCE === 'true',
     public: {
       appName: 'VaravuSelavu',
     },
