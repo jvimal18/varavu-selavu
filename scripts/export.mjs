@@ -2,13 +2,15 @@
 /**
  * scripts/export.mjs — full DB snapshot export (pure Node, no TS build step).
  *
- * Reads all 5 user-facing tables and writes a JSON snapshot:
- *   { exportedAt, version, users, accounts, categories, transactions, userSettings }
+ * Reads all 6 user-facing tables and writes a JSON snapshot:
+ *   { exportedAt, version, users, accounts, categories, transactions, userSettings, sessions }
  *
- * Note: user_settings was added in v1.1.0 but the original v1.0 export
- * silently dropped it. The `version` field on the snapshot is bumped to
- * "1.1" so older snapshots still restore correctly while the bug is fixed
- * for everything going forward.
+ * Snapshot versions:
+ *   1.0 — 4 tables (users, accounts, categories, transactions)
+ *   1.1 — 5 tables (adds user_settings)
+ *   1.2 — 6 tables (adds sessions). v1.0/v1.1 snapshots still restore;
+ *         user_settings defaults to [] in v1.0, sessions defaults to []
+ *         in v1.0/v1.1.
  *
  * The script is wrapped as a module: it exports `runExport()` for tests
  * and only does CLI argv parsing / process.exit at the top level.
@@ -46,14 +48,15 @@ export function runExport({ dbPath, outPath }) {
 
     snapshot = {
       exportedAt: new Date().toISOString(),
-      // Bumped from 1.0 → 1.1 to mark the user_settings addition. Used by
-      // import.ts to decide whether to expect the new field.
-      version: '1.1',
+      // 1.0 → 1.1 (user_settings) → 1.2 (sessions). import.ts uses the
+      // `version` field to decide which optional fields to expect.
+      version: '1.2',
       users: db.prepare('SELECT * FROM users').all(),
       accounts: db.prepare('SELECT * FROM accounts').all(),
       categories: db.prepare('SELECT * FROM categories').all(),
       transactions: db.prepare('SELECT * FROM transactions').all(),
       userSettings: db.prepare('SELECT * FROM user_settings').all(),
+      sessions: db.prepare('SELECT * FROM sessions').all(),
     }
   } finally {
     db.close()
@@ -71,6 +74,7 @@ export function runExport({ dbPath, outPath }) {
       categories: snapshot.categories.length,
       transactions: snapshot.transactions.length,
       userSettings: snapshot.userSettings.length,
+      sessions: snapshot.sessions.length,
     },
   }
 }
@@ -92,7 +96,7 @@ if (isMainModule) {
     console.log(
       `Exported ${c.users} users, ${c.accounts} accounts, ` +
         `${c.categories} categories, ${c.transactions} transactions, ` +
-        `${c.userSettings} user_settings -> ${result.outPath}`,
+        `${c.userSettings} user_settings, ${c.sessions} sessions -> ${result.outPath}`,
     )
     process.exit(0)
   } catch (err) {

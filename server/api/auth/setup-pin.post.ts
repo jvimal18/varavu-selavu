@@ -1,12 +1,19 @@
 /**
  * One-time PIN setup (or PIN change).
  * Body: { userId, pin, currentPin? } — currentPin required if user already has a PIN.
+ *
+ * Phase 1 PR 4 change: on PIN change, revoke all OTHER active sessions
+ * for this user (a shared/compromised device shouldn't keep its session
+ * after the PIN rotates). The current session is preserved.
  */
 import { z } from 'zod'
 import { defineEventHandler, readBody, createError } from 'h3'
 import { useDb, schema } from '~~/server/db/client'
 import { eq } from 'drizzle-orm'
-import { hashPin, verifyPin, setSessionUserId, validatePin, getCurrentUser } from '~~/server/utils/auth'
+import {
+  hashPin, verifyPin, setSessionUserId, readSessionMeta, validatePin,
+  hashSessionToken, getSessionTokenFromCookie, revokeAllOtherSessions,
+} from '~~/server/utils/auth'
 
 const Body = z.object({
   userId: z.string().min(1),
@@ -32,12 +39,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'User not found' })
   }
 
-  if (user.pinHash) {
-    // Changing existing PIN — require current
+  const isPinChange = !!user.pinHash
+  if (isPinChange) {
     if (!currentPin) {
       throw createError({ statusCode: 400, statusMessage: 'Current PIN required' })
     }
-    const ok = await verifyPin(currentPin, user.pinHash)
+    const ok = await verifyPin(currentPin, user.pinHash!)
     if (!ok) {
       throw createError({ statusCode: 401, statusMessage: 'Current PIN incorrect' })
     }
@@ -49,6 +56,21 @@ export default defineEventHandler(async (event) => {
     .where(eq(schema.users.id, userId))
     .run()
 
-  setSessionUserId(event, userId)
+  // Capture the current session ID (if any) BEFORE setSessionUserId overwrites
+  // the cookie. This is the session we KEEP; everything else for this user
+  // gets revoked. On a PIN change, this naturally revokes every other device.
+  const currentToken = getSessionTokenFromCookie(event)
+  const currentSessionId = currentToken ? hashSessionToken(currentToken) : null
+
+  if (isPinChange && currentSessionId) {
+    // Revoke first, then create the new session. Reverse order would miss
+    // the old session (the new session ID would be passed as the "keep"
+    // argument, leaving the old session untouched).
+    await revokeAllOtherSessions(userId, currentSessionId)
+  }
+
+  // setSessionUserId is async (writes the session row + sets the cookie).
+  // Must await.
+  await setSessionUserId(event, userId, readSessionMeta(event))
   return { user: { id: user.id, name: user.name, color: user.color } }
 })

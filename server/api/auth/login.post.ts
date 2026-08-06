@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { defineEventHandler, readBody, createError } from 'h3'
 import { useDb, schema } from '~~/server/db/client'
 import { eq } from 'drizzle-orm'
-import { verifyPin, setSessionUserId, validatePin } from '~~/server/utils/auth'
+import { verifyPin, setSessionUserId, readSessionMeta, validatePin } from '~~/server/utils/auth'
 import { checkLoginAllowed, recordLoginResult, logAuthFailure, getClientIp } from '~~/server/utils/rateLimit'
 
 const Body = z.object({
@@ -64,6 +64,10 @@ export default defineEventHandler(async (event) => {
   }
 
   recordLoginResult(event, userId, true)
-  setSessionUserId(event, user.id)
+  // setSessionUserId is async (Phase 1 PR 4 — writes the session row before
+  // returning). Must await; otherwise the response is sent before the DB
+  // INSERT completes, leaving an orphan cookie pointing at a non-existent
+  // session row.
+  await setSessionUserId(event, user.id, readSessionMeta(event))
   return { user: { id: user.id, name: user.name, color: user.color } }
 })
