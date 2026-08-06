@@ -1,0 +1,9 @@
+[Unit]
+Description=VaravuSelavu nightly binary backup (full DB snapshot via better-sqlite3 db.backup())
+# No [Install] section — this unit is pulled in by budget-tracker-binary-backup.timer.
+
+[Service]
+Type=oneshot
+User=budget
+WorkingDirectory=/var/lib/budget-tracker
+ExecStart=/usr/bin/node /var/lib/budget-tracker/scripts/backup-binary.mjs
