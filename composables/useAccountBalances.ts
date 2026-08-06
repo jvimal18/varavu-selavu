@@ -35,13 +35,16 @@ export function computeAccountBalances(
   // Seed with opening balances
   for (const a of accounts) map.set(a.id, a.openingBalance)
 
-  for (const t of transactions) {
-    const isCC = (id: string) => accounts.find((a) => a.id === id)?.type === 'credit_card'
-    const isInvestment = (id: string) => {
-      const a = accounts.find((acc) => acc.id === id)
-      return a?.type === 'mutual_fund' || a?.type === 'fixed_deposit' || a?.type === 'recurring_deposit'
-    }
+  // Build account lookup map for O(1) type checks (replaces the per-iteration
+  // `accounts.find` that used to be O(n) per transaction).
+  const accountById = new Map(accounts.map((a) => [a.id, a]))
+  const isCC = (id: string) => accountById.get(id)?.type === 'credit_card'
+  const isInvestment = (id: string) => {
+    const t = accountById.get(id)?.type
+    return t === 'mutual_fund' || t === 'fixed_deposit' || t === 'recurring_deposit'
+  }
 
+  for (const t of transactions) {
     if (t.type === 'income') {
       // Money comes into the account (not for investments; they use 'interest')
       if (!isInvestment(t.accountId)) {

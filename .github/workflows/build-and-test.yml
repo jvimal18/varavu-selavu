@@ -1,0 +1,58 @@
+name: Build & Test
+
+# Reusable workflow called by ci.yml. Runs the same install -> typecheck ->
+# test -> build pipeline on whatever `runner` the caller asks for, inside a
+# node:22-bookworm container so the underlying machine (hosted or self-hosted)
+# stays clean of pnpm/Node version drift.
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: 'runs-on value. String for hosted (e.g. ubuntu-latest) or JSON array for self-hosted (e.g. ["self-hosted","linux","dev"]).'
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ${{ fromJSON(inputs.runner) }}
+    timeout-minutes: 15
+
+    # Container: node:22-bookworm ships Node 22 (matches .nvmrc), so the
+    # container is self-sufficient and we skip actions/setup-node below.
+    container:
+      image: node:22-bookworm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        # version intentionally omitted — pnpm/action-setup reads
+        # packageManager from package.json (currently pnpm@9.12.0).
+        # Specifying both produces ERR_PNPM_BAD_PM_VERSION.
+        uses: pnpm/action-setup@v5
+
+      - name: Cache pnpm store
+        uses: actions/cache@v5
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate version metadata
+        run: node scripts/generate-version-json.mjs
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Run tests
+        run: pnpm test:run
+
+      - name: Build
+        run: pnpm build

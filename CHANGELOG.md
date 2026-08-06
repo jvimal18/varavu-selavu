@@ -3,6 +3,22 @@
 All notable changes to VaravuSelavu are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/) · This project does not yet use SemVer for the app; release tags follow `vMAJOR.MINOR.PATCH`.
 
+## [v1.6.0] - 2026-08-07
+
+### Added
+- **Vitest test suite (64 tests across 4 files).** Pure-function unit tests for the highest-risk code in the repo: `tests/unit/money.test.ts` (paise conversions, `formatPaise` edge cases), `tests/unit/dates.test.ts` (`localISODate` for UTC+0, UTC+5:30, DST boundaries), `tests/unit/accountBalances.test.ts` (golden sums for `bank` / `credit_card` / `mutual_fund` across all four `transactions.type` values; archived accounts excluded from liquidity), `tests/unit/dashboardPeriods.test.ts` (the `since_last_salary` 4-branch fallback chain). `vitest.config.ts` (Node env, `~~` → repo root alias, `isolate: true`). `package.json` scripts: `test`, `test:run`, `test:watch`.
+- **GitHub Actions CI with hosted-primary → self-hosted+Docker fallback.** Two workflows in `.github/workflows/`: `build-and-test.yml` (reusable, runs inside `container: image: node:22-bookworm`) and `ci.yml` (caller, two jobs — `hosted` on `ubuntu-latest`, `self-hosted` on `[self-hosted, linux, dev]` with `needs: hosted, if: failure()` so it only runs as a fallback). Triggers: `push` + `pull_request` to `main` **and** `phase1/**`, plus `workflow_dispatch` for manual re-runs. Concurrency: `cancel-in-progress: true` per ref. Branch protection on `main` should require the **"Build & Test (self-hosted fallback)"** check (it counts as `skipped` → passing when hosted succeeds, so normal merges stay unblocked).
+- **`ROADMAP.md` is now tracked in the repository.** Previously gitignored (per v1.4.2) as "personal scratch", it's been reclassified as a project document — it carries the at-a-glance phase status, the per-PR plan, and "what's done / what to do next". `DECISIONS.md` stays gitignored; `ROADMAP.md` + `CHANGELOG.md` + `AGENTS.md` are the three docs.
+- **Self-hosted runner registered as `vimal-dev`.** Pool `Default`, labels `self-hosted, Linux, X64, dev`. Lives at `/home/vimal/actions-runner` on `vimal-hp` (this machine). Not a deploy — purely for the CI fallback.
+
+### Changed
+- **`composables/useAccountBalances.ts`** — hoisted a `Map<id, account>` for O(1) type lookups (was O(n) per transaction). Refactor motivated by the `accountBalances.test.ts` golden-sums suite.
+- **`utils/dates.ts`** — new file. `localISODate` + `localMonthKey` moved out of `server/api/dashboard.get.ts` (shared across server + client).
+- **`server/utils/dashboardPeriods.ts`** — new module, extracted from `server/api/dashboard.get.ts`. The `since_last_salary` resolver now takes a `FindSalaryDate` callback so the chain is pure (no DB dependency in the unit test).
+- **CI actions bumped to `@v5`.** `actions/checkout`, `pnpm/action-setup`, `actions/cache` all pin `using: node24` (the v4 versions were being force-upgraded to Node 24 by the runner and emitting "Node 20 is being deprecated" warnings). `pnpm/action-setup@v5` keeps the same `package_json_file` input we rely on.
+- **`pnpm/action-setup` no longer takes an explicit `version`.** `package.json` pins `pnpm@9.12.0` via `packageManager`; passing both produces `ERR_PNPM_BAD_PM_VERSION`. Let the action read `packageManager` and stay single-source-of-truth.
+- **CI triggers widened from just `main` to `main` + `phase1/**`.** Direct pushes to phase1 branches also run CI without needing a PR first.
+
 ## [v1.5.0] - 2026-08-03
 
 ### Added

@@ -1,5 +1,7 @@
 # VaravuSelavu
 
+[![CI](https://github.com/jvimal18/varavu-selavu/actions/workflows/ci.yml/badge.svg)](https://github.com/jvimal18/varavu-selavu/actions/workflows/ci.yml)
+
 Personal + household budget tracker for Vimal & Pavithra. Nuxt 3 + TypeScript +
 Drizzle + better-sqlite3, stored in INR paise. Runs on a Raspberry Pi 4 at home,
 exposed publicly via Tailscale Funnel.
@@ -109,4 +111,4 @@ Do not configure any other proxy — Funnel already terminates TLS.
 
 ---
 
-See **CHANGELOG.md** for the release history and design notes per version.
+See **CHANGELOG.md** for the release history and per-version notes, and **ROADMAP.md** for the feature plan, phase status, and what's coming next.
