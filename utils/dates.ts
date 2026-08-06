@@ -3,6 +3,28 @@
  */
 import { format, formatDistanceToNow, parseISO, isToday, isYesterday } from 'date-fns'
 
+/**
+ * Format a local Date as YYYY-MM-DD.
+ *
+ * IMPORTANT: never use `d.toISOString().slice(0, 10)` for "today" math — it
+ * drifts by the UTC offset and silently breaks day-bucketing for users east
+ * of UTC. This is the only way the rest of the app should produce an ISO
+ * date from a Date.
+ */
+export function localISODate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** Local YYYY-MM key for a Date (for month bucketing). */
+export function localMonthKey(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  return `${y}-${m}`
+}
+
 export function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }

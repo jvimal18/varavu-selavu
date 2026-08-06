@@ -9,7 +9,8 @@ import {
   computeSavingsLiquidity,
 } from '~~/composables/useAccountBalances'
 import { format, parseISO } from 'date-fns'
-import { displayMonth } from '~~/utils/dates'
+import { localISODate, localMonthKey } from '~~/utils/dates'
+import { resolvePeriod, type FindSalaryDate } from '~~/server/utils/dashboardPeriods'
 
 /**
  * Dashboard aggregates — liquidity position, period income/expense, daily spends,
@@ -17,8 +18,12 @@ import { displayMonth } from '~~/utils/dates'
  *
  * The "period" is a configurable date range (defaults to the last 30 days)
  * rather than a fixed calendar month:
- *   ?period=this_month | last_30 | last_90 | custom
+ *   ?period=this_month | last_30 | last_90 | since_last_salary | custom
  *   ?from=YYYY-MM-DD&to=YYYY-MM-DD  (required when period=custom)
+ *
+ * Period resolution lives in `~~/server/utils/dashboardPeriods.ts` so it can
+ * be unit-tested. This handler adapts the Drizzle query into the
+ * `FindSalaryDate` callback the resolver expects.
  *
  * Liquidity (cashLiquidity / creditLiquidity / savingsLiquidity) and account
  * balances are always all-time; recentTransactions is global recency. The
@@ -30,82 +35,23 @@ import { displayMonth } from '~~/utils/dates'
  * strings (lexicographic === chronological).
  */
 
-/** Format a local Date as YYYY-MM-DD (avoids toISOString UTC drift). */
-function localISODate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-/** Local YYYY-MM key for a Date (for month bucketing). */
-function localMonthKey(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  return `${y}-${m}`
-}
-
-const PERIODS = ['this_month', 'last_30', 'last_90', 'since_last_salary', 'custom'] as const
-type PeriodKey = (typeof PERIODS)[number]
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const SALARY_CATEGORY_ID = 'c_salary'
 
 export default defineEventHandler(async (event) => {
   const user = await requireUser(event)
   const db = useDb()
-
-  const query = getQuery(event)
-  const period = (query.period ?? 'since_last_salary') as string
-  if (!PERIODS.includes(period as PeriodKey)) {
-    throw createError({ statusCode: 400, statusMessage: `Invalid period: ${period}` })
-  }
-
-  // ---- Resolve the date range in local time ----
   const today = new Date()
-  let from: string
-  let to: string
+  const query = getQuery(event)
 
-  if (period === 'custom') {
-    from = typeof query.from === 'string' ? query.from : ''
-    to = typeof query.to === 'string' ? query.to : ''
-    if (!ISO_DATE_RE.test(from) || !ISO_DATE_RE.test(to)) {
-      throw createError({ statusCode: 400, statusMessage: 'from and to must be YYYY-MM-DD when period=custom' })
-    }
-    if (from > to) {
-      throw createError({ statusCode: 400, statusMessage: 'from must be on or before to' })
-    }
-  } else {
-    to = localISODate(today)
-    if (period === 'this_month') {
-      from = localISODate(new Date(today.getFullYear(), today.getMonth(), 1))
-    } else if (period === 'since_last_salary') {
-      // Household-wide: the period starts from the FIRST salary credit of the
-      // current pay cycle. Since the current month's salary is typically
-      // credited in the last week of the previous month, we look for the
-      // first "Salary"-category transaction in the previous month. If Vimal
-      // got paid on Jul 24 and Pavithra on Jul 31, the period starts from
-      // Jul 24 — the earlier one — so both users' spending in the August pay
-      // cycle is included.
-      //
-      // We filter by the "Salary" category (c_salary) rather than the broad
-      // "income" type so that other income (interest, gifts, refunds) does
-      // not accidentally start a pay cycle.
-      //
-      // Fallback chain:
-      //   1. First Salary-category transaction in the previous month (normal
-      //      case: current-month salary lands in the last week of the
-      //      previous month)
-      //   2. First Salary-category transaction in the current month (edge
-      //      case: salary lands in the first week of the current month, not
-      //      the previous one)
-      //   3. Most recent Salary-category transaction overall (edge case: no
-      //      salary this month or last month yet — keep the previous pay
-      //      cycle visible)
-      //   4. Start of the current month (last-resort fallback)
-      const SALARY_CATEGORY_ID = 'c_salary'
-      const startOfThisMonth = localISODate(new Date(today.getFullYear(), today.getMonth(), 1))
-      const startOfPrevMonth = localISODate(new Date(today.getFullYear(), today.getMonth() - 1, 1))
-
-      const firstSalaryPrevMonth = await db.select({ date: schema.transactions.date })
+  // Adapt Drizzle to the FindSalaryDate callback the period resolver expects.
+  // One Drizzle query per branch; the resolver's 4-step fallback chain maps
+  // directly onto three "filter" values.
+  const findSalaryDate: FindSalaryDate = async (filter) => {
+    const startOfThisMonth = localISODate(new Date(today.getFullYear(), today.getMonth(), 1))
+    const startOfPrevMonth = localISODate(new Date(today.getFullYear(), today.getMonth() - 1, 1))
+    let row: { date: string } | undefined
+    if (filter === 'in_previous_month') {
+      row = await db.select({ date: schema.transactions.date })
         .from(schema.transactions)
         .where(and(
           eq(schema.transactions.categoryId, SALARY_CATEGORY_ID),
@@ -115,47 +61,38 @@ export default defineEventHandler(async (event) => {
         .orderBy(asc(schema.transactions.date), asc(schema.transactions.createdAt))
         .limit(1)
         .get()
-
-      if (firstSalaryPrevMonth) {
-        from = firstSalaryPrevMonth.date
-      } else {
-        const firstSalaryThisMonth = await db.select({ date: schema.transactions.date })
-          .from(schema.transactions)
-          .where(and(
-            eq(schema.transactions.categoryId, SALARY_CATEGORY_ID),
-            gte(schema.transactions.date, startOfThisMonth),
-          ))
-          .orderBy(asc(schema.transactions.date), asc(schema.transactions.createdAt))
-          .limit(1)
-          .get()
-        if (firstSalaryThisMonth) {
-          from = firstSalaryThisMonth.date
-        } else {
-          const lastSalary = await db.select({ date: schema.transactions.date })
-            .from(schema.transactions)
-            .where(eq(schema.transactions.categoryId, SALARY_CATEGORY_ID))
-            .orderBy(desc(schema.transactions.date), desc(schema.transactions.createdAt))
-            .limit(1)
-            .get()
-          from = lastSalary?.date ?? startOfThisMonth
-        }
-      }
-    } else {
-      const days = period === 'last_30' ? 30 : 90
-      from = localISODate(new Date(today.getFullYear(), today.getMonth(), today.getDate() - days))
+    } else if (filter === 'in_current_month') {
+      row = await db.select({ date: schema.transactions.date })
+        .from(schema.transactions)
+        .where(and(
+          eq(schema.transactions.categoryId, SALARY_CATEGORY_ID),
+          gte(schema.transactions.date, startOfThisMonth),
+        ))
+        .orderBy(asc(schema.transactions.date), asc(schema.transactions.createdAt))
+        .limit(1)
+        .get()
+    } else { // 'most_recent'
+      row = await db.select({ date: schema.transactions.date })
+        .from(schema.transactions)
+        .where(eq(schema.transactions.categoryId, SALARY_CATEGORY_ID))
+        .orderBy(desc(schema.transactions.date), desc(schema.transactions.createdAt))
+        .limit(1)
+        .get()
     }
+    return row?.date ?? null
   }
 
-  const periodLabel =
-    period === 'this_month'
-      ? displayMonth()
-      : period === 'last_30'
-        ? 'Last 30 days'
-        : period === 'last_90'
-          ? 'Last 90 days'
-          : period === 'since_last_salary'
-            ? `Since ${format(parseISO(from), 'MMM d')}`
-            : `${format(parseISO(from), 'MMM d')} – ${format(parseISO(to), 'MMM d')}`
+  // Resolve the period (throws on invalid period / bad custom dates).
+  let period
+  try {
+    period = await resolvePeriod(findSalaryDate, query, today)
+  } catch (err) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: err instanceof Error ? err.message : 'Invalid period',
+    })
+  }
+  const { from, to, label: periodLabel } = period
 
   const accounts = (await db.select().from(schema.accounts).all()).filter((a) => !a.archived)
   // Transactions are hard-deleted (no soft-delete field); all rows are live.

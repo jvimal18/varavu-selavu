@@ -12,6 +12,9 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "typecheck": "nuxt typecheck",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest --watch",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx server/db/migrate.ts",
     "db:seed": "tsx server/db/seed.ts",
@@ -39,6 +42,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@nuxt/test-utils": "^3.14.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.7.5",
@@ -46,7 +50,9 @@
     "drizzle-kit": "^0.28.0",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.19.1",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.0",
+    "vue-tsc": "^2.1.10"
   },
   "packageManager": "pnpm@9.12.0"
 }

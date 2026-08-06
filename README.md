@@ -1,5 +1,7 @@
 # VaravuSelavu
 
+[![CI](https://github.com/jvimal18/varavu-selavu/actions/workflows/ci.yml/badge.svg)](https://github.com/jvimal18/varavu-selavu/actions/workflows/ci.yml)
+
 Personal + household budget tracker for Vimal & Pavithra. Nuxt 3 + TypeScript +
 Drizzle + better-sqlite3, stored in INR paise. Runs on a Raspberry Pi 4 at home,
 exposed publicly via Tailscale Funnel.
