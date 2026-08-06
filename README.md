@@ -109,4 +109,4 @@ Do not configure any other proxy — Funnel already terminates TLS.
 
 ---
 
-See **CHANGELOG.md** for the release history and design notes per version.
+See **CHANGELOG.md** for the release history and per-version notes, and **ROADMAP.md** for the feature plan, phase status, and what's coming next.
