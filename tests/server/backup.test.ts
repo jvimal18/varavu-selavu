@@ -63,14 +63,14 @@ describe('runBackup', () => {
   beforeEach(() => { ctx = setupTestDb() })
   afterEach(() => { teardownTestDb(ctx) })
 
-  it('creates a backup file with all 5 user-facing tables', async () => {
+  it('creates a backup file with all 6 user-facing tables (PR 4 adds sessions)', async () => {
     seedFixture(ctx.db)
     const outPath = join(ctx.tmpDir, 'backup.db.bak')
 
     const result = await runBackup({ dbPath: ctx.dbPath, outPath })
 
     expect(result.outPath).toBe(outPath)
-    expect(result.tables).toEqual(['accounts', 'categories', 'transactions', 'user_settings', 'users'])
+    expect(result.tables).toEqual(['accounts', 'categories', 'sessions', 'transactions', 'user_settings', 'users'])
     expect(existsSync(outPath)).toBe(true)
   })
 
@@ -156,7 +156,7 @@ describe('runExport', () => {
   beforeEach(() => { ctx = setupTestDb() })
   afterEach(() => { teardownTestDb(ctx) })
 
-  it('produces a v1.1 snapshot with all 5 user-facing tables', () => {
+  it('produces a v1.2 snapshot with all 6 user-facing tables (PR 4 adds sessions)', () => {
     seedFixture(ctx.db)
     const outPath = join(ctx.tmpDir, 'snapshot.json')
 
@@ -167,15 +167,17 @@ describe('runExport', () => {
     expect(result.counts.accounts).toBe(1)
     expect(result.counts.categories).toBe(1)
     expect(result.counts.transactions).toBe(1)
-    expect(result.counts.userSettings).toBe(1) // ← the fix
+    expect(result.counts.userSettings).toBe(1)
+    expect(result.counts.sessions).toBe(0) // empty in this test (no auth flow)
 
     const json = JSON.parse(readFileSync(outPath, 'utf8'))
-    expect(json.version).toBe('1.1')
+    expect(json.version).toBe('1.2')
     expect(json.users).toHaveLength(1)
     expect(json.accounts).toHaveLength(1)
     expect(json.categories).toHaveLength(1)
     expect(json.transactions).toHaveLength(1)
     expect(json.userSettings).toHaveLength(1)
+    expect(json.sessions).toHaveLength(0)
   })
 
   it('integrity_check passes on the exported JSON (it opens as a real SQLite file)', () => {
@@ -201,9 +203,10 @@ describe('runExport', () => {
       categories: 0,
       transactions: 0,
       userSettings: 0,
+      sessions: 0,
     })
 
     const json = JSON.parse(readFileSync(outPath, 'utf8'))
-    expect(json.version).toBe('1.1')
+    expect(json.version).toBe('1.2')
   })
 })

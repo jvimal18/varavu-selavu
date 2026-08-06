@@ -100,6 +100,11 @@ ssh ${PI_SSH_OPTS} "${SSH_TARGET}" \
    ${PI_SUDO} cp /tmp/budget-systemd/*.service /tmp/budget-systemd/*.timer /etc/systemd/system/ && \
    ${PI_SUDO} systemctl daemon-reload && \
    (${PI_SUDO} systemctl enable budget-tracker >/dev/null 2>&1 || true) && \
+   # Enable the session cleanup timer (Phase 1 PR 4). The other timers
+   # (export, binary-backup) are intentionally left for manual enable so
+   # they can be verified before going live. The cleanup one is pure
+   # janitorial and safe to auto-enable.
+   (${PI_SUDO} systemctl enable budget-tracker-session-cleanup.timer >/dev/null 2>&1 || true) && \
    ${PI_SUDO} systemctl restart budget-tracker && \
    (command -v fail2ban-server >/dev/null 2>&1 || (${PI_SUDO} apt-get update && ${PI_SUDO} apt-get install -y fail2ban)) && \
    ${PI_SUDO} install -m 644 /tmp/budget-fail2ban/budget-auth.conf /etc/fail2ban/filter.d/budget-auth.conf && \

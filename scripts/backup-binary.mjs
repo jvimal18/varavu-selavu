@@ -28,8 +28,14 @@ import { dirname, resolve } from 'node:path'
  * the on-disk order. If you add a new table, add it here AND in
  * scripts/export.mjs AND in scripts/import.ts AND in
  * tests/server/backup.test.ts.
+ *
+ * v1.6.0 (PR 4): added 'sessions'. The backup captures active session
+ * rows (id is the SHA-256 hash, so the raw tokens are not exposed).
+ * Restoring this backup re-inserts the session rows verbatim; users
+ * with a matching cookie will continue to be authenticated without
+ * re-login.
  */
-const EXPECTED_TABLES = ['accounts', 'categories', 'transactions', 'user_settings', 'users']
+const EXPECTED_TABLES = ['accounts', 'categories', 'sessions', 'transactions', 'user_settings', 'users']
 
 /**
  * Run a binary backup. Throws on any error (callers handle the message and

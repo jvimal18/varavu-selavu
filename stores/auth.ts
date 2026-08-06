@@ -78,6 +78,16 @@ export const useAuthStore = defineStore('auth', {
     async logout() {
       await $fetch('/api/auth/logout', { method: 'POST' })
       this.user = null
+      // Hard navigation to /login to reset ALL client state — useState
+      // refs, Pinia stores other than `auth`, and any other composable-cached
+      // data. useState is globally shared by key, so the only way to
+      // guarantee a clean slate for the next user on this browser is a
+      // full reload. The blank-page moment is ~200ms; well worth the
+      // simplicity over maintaining a list of every useState key.
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+        return
+      }
       await navigateTo('/login')
     },
   },

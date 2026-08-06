@@ -6,8 +6,11 @@
  *
  * Snapshot versions (mirrors scripts/export.mjs):
  *   1.0 — 4 tables (users, accounts, categories, transactions)
- *   1.1 — 5 tables (adds user_settings). v1.0 snapshots still restore;
- *         user_settings rows default to [] when the field is missing.
+ *   1.1 — 5 tables (adds user_settings)
+ *   1.2 — 6 tables (adds sessions)
+ *
+ * Backward compat: v1.0 → user_settings and sessions default to [];
+ * v1.1 → sessions defaults to []. Missing fields never cause failure.
  *
  * Usage:
  *   pnpm import <snapshot.json>
@@ -31,13 +34,14 @@ interface Snapshot {
   accounts: Array<Record<string, unknown>>
   categories: Array<Record<string, unknown>>
   transactions: Array<Record<string, unknown>>
-  userSettings?: Array<Record<string, unknown>>  // present in v1.1+
+  userSettings?: Array<Record<string, unknown>>  // v1.1+
+  sessions?: Array<Record<string, unknown>>      // v1.2+
 }
 
 const DB_PATH = process.env.NUXT_DB_PATH || './budget.db'
 const snapshot = JSON.parse(readFileSync(jsonPath, 'utf8')) as Snapshot
 
-// Required tables. userSettings is optional for backward compat with v1.0.
+// Required tables (always present in v1.0+).
 for (const table of ['users', 'accounts', 'categories', 'transactions'] as const) {
   if (!Array.isArray(snapshot[table])) {
     console.error(`Invalid snapshot: missing "${table}" array`)
@@ -45,8 +49,13 @@ for (const table of ['users', 'accounts', 'categories', 'transactions'] as const
   }
 }
 const userSettings = snapshot.userSettings ?? []
+const sessions = snapshot.sessions ?? []
 if (snapshot.userSettings !== undefined && !Array.isArray(snapshot.userSettings)) {
   console.error('Invalid snapshot: "userSettings" must be an array')
+  process.exit(1)
+}
+if (snapshot.sessions !== undefined && !Array.isArray(snapshot.sessions)) {
+  console.error('Invalid snapshot: "sessions" must be an array')
   process.exit(1)
 }
 
@@ -59,12 +68,12 @@ console.log(`Snapshot: ${jsonPath} (version ${snapshot.version ?? '1.0'})`)
 console.log(
   `Current:  ${count('users')} users, ${count('accounts')} accounts, ` +
     `${count('categories')} categories, ${count('transactions')} transactions, ` +
-    `${count('user_settings')} user_settings`,
+    `${count('user_settings')} user_settings, ${count('sessions')} sessions`,
 )
 console.log(
   `Incoming: ${snapshot.users.length} users, ${snapshot.accounts.length} accounts, ` +
     `${snapshot.categories.length} categories, ${snapshot.transactions.length} transactions, ` +
-    `${userSettings.length} user_settings`,
+    `${userSettings.length} user_settings, ${sessions.length} sessions`,
 )
 
 const rl = createInterface({ input: process.stdin, output: process.stdout })
@@ -83,25 +92,35 @@ function insert(table: string, rows: Record<string, unknown>[]): void {
   for (const r of rows) stmt.run(cols.map((c) => r[c]))
 }
 
-// FK order:
+// FK order (Phase 1 PR 4 — adds sessions which depends on users):
 //   users (no deps) → accounts (no deps) → categories (self-FK) →
 //   user_settings (depends on users + accounts) →
-//   transactions (depends on users, accounts, categories)
+//   transactions (depends on users, accounts, categories) →
+//   sessions (depends on users; sessions are listed last so we can re-insert
+//   them after their user_id targets exist)
+//
+// Note: we deliberately drop + re-insert sessions here. The new binary
+// will create a new session on the next login anyway, and re-importing
+// a stale session_token would be useless (the token is now hashed in the
+// DB; the cookie holds the raw value, which we don't have).
 db.exec('PRAGMA foreign_keys = OFF')
 db.exec('BEGIN')
 try {
-  // Wipe in reverse FK order, re-insert in forward FK order.
+  // Wipe in reverse FK order
+  db.prepare('DELETE FROM sessions').run()
   db.prepare('DELETE FROM transactions').run()
   db.prepare('DELETE FROM user_settings').run()
   db.prepare('DELETE FROM accounts').run()
   db.prepare('DELETE FROM categories').run()
   db.prepare('DELETE FROM users').run()
 
+  // Re-insert in forward FK order
   insert('users', snapshot.users)
   insert('accounts', snapshot.accounts)
   insert('categories', snapshot.categories)
   insert('user_settings', userSettings)
   insert('transactions', snapshot.transactions)
+  insert('sessions', sessions)
   db.exec('COMMIT')
 } catch (err) {
   db.exec('ROLLBACK')
@@ -113,6 +132,6 @@ db.exec('PRAGMA foreign_keys = ON')
 console.log(
   `Imported ${snapshot.users.length} users, ${snapshot.accounts.length} accounts, ` +
     `${snapshot.categories.length} categories, ${snapshot.transactions.length} transactions, ` +
-    `${userSettings.length} user_settings`,
+    `${userSettings.length} user_settings, ${sessions.length} sessions`,
 )
 db.close()

@@ -90,6 +90,30 @@ export const userSettings = sqliteTable('user_settings', {
 })
 
 // =====================================================
+// SESSIONS
+// =====================================================
+// `id` is the SHA-256 hex of the raw token in the cookie — never the raw
+// token itself. The cookie holds the 43-char base64url(32-byte) random; the
+// DB stores the hash. A leaked DB file yields only hashes, not bearer
+// tokens.
+//
+// `user_id` is ON DELETE CASCADE so deleting a user (admin feature, not
+// implemented) invalidates all their sessions automatically.
+export const sessions = sqliteTable('sessions', {
+  id: text('id').primaryKey(),                                                   // SHA-256 hex of the raw cookie token
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userAgent: text('user_agent'),
+  ip: text('ip'),
+  createdAt: text('created_at').notNull(),
+  lastSeenAt: text('last_seen_at').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  revokedAt: text('revoked_at'),                                                 // ISO; null = active
+}, (t) => ({
+  userIdx: index('idx_sessions_user').on(t.userId),
+  expiresIdx: index('idx_sessions_expires').on(t.expiresAt),
+}))
+
+// =====================================================
 // INFERRED TYPES
 // =====================================================
 export type User = typeof users.$inferSelect
@@ -102,3 +126,5 @@ export type Transaction = typeof transactions.$inferSelect
 export type NewTransaction = typeof transactions.$inferInsert
 export type UserSettings = typeof userSettings.$inferSelect
 export type NewUserSettings = typeof userSettings.$inferInsert
+export type Session = typeof sessions.$inferSelect
+export type NewSession = typeof sessions.$inferInsert
