@@ -21,8 +21,9 @@ pnpm dev                          # http://localhost:3000
 
 - `pnpm db:reset` — wipes `$NUXT_DB_PATH` (defaults to `./data/dev.db`), then
   re-migrates + re-seeds. Local dev only; never run on the Pi.
-- `pnpm test:run` for the Vitest suite (64 tests; pure-function unit tests for
-  the financial-math and dashboard-period code). `pnpm test` for watch mode.
+- `pnpm test:run` for the Vitest suite (72 tests; 64 pure-function unit tests for
+  the financial-math and dashboard-period code, plus 8 backup integration tests).
+  `pnpm test` for watch mode.
   Pre-PR sanity check: `pnpm typecheck && pnpm test:run && pnpm build`.
 
 ## Commands cheat sheet
@@ -38,8 +39,9 @@ pnpm dev                          # http://localhost:3000
 | `pnpm db:generate` | `drizzle-kit generate` — produces a new SQL file in `db/migrations/`. |
 | `pnpm db:migrate` | Runs all `db/migrations/*.sql` against the DB. Idempotent. |
 | `pnpm db:seed` | Inserts u_vimal, u_pavithra, and the default category tree. Idempotent. |
-| `pnpm export` | `node scripts/export.mjs [out.json]` — JSON snapshot of all 4 tables. |
-| `pnpm import <file>` | `tsx scripts/import.ts` — WIPES + re-inserts; requires typing `YES`. |
+| `pnpm export` | `node scripts/export.mjs [out.json]` — JSON snapshot of all 5 tables (v1.1 snapshot; pre-v1.6.0 snapshots are missing `user_settings` and unsafe to restore). |
+| `pnpm import <file>` | `tsx scripts/import.ts` — WIPES + re-inserts; requires typing `YES`. v1.0 snapshots still restore; `userSettings` defaults to `[]`. |
+| `node scripts/backup-binary.mjs [out.db.bak]` | Full binary backup via `better-sqlite3`'s online backup API. Captures everything (data, schema, WAL, `__drizzle_migrations`). Runs `PRAGMA integrity_check` on the copy. On the Pi, the systemd timer (`budget-tracker-binary-backup.timer`) runs this at 03:00 daily. |
 | `./scripts/deploy.sh` | Local → Pi: build, rsync, prod install, fix native better-sqlite3, migrate, restart. Idempotent. |
 | `./scripts/setup-pi.sh` | One-time Pi provisioning (Node 24, pnpm, rclone, `budget` system user). |
 | `./scripts/export.sh` | JSON export + rclone push to Google Drive. Works from dev machine or Pi. |
@@ -117,6 +119,15 @@ the bundled one** (the `.output` was built on the dev machine's arch) →
 `migrate.mjs` as user `budget` → install systemd units + fail2ban configs →
 restart service. Verify via SSH curl to `127.0.0.1:3000/api/auth/me` (expect
 401 — that proves the app is up; the dev box can't reach 127.0.0.1 on the Pi).
+
+## Backup model (v1.6.0+)
+
+There are two backup layers, both run on the Pi via systemd:
+
+- **JSON snapshot** (`scripts/export.mjs` → `systemd/budget-tracker-export.{service,timer}` at 02:00 daily) — human-readable, 5 user-facing tables (`users`, `accounts`, `categories`, `user_settings`, `transactions`), pushed to Google Drive via `scripts/export.sh` (rclone with 30-day retention). Source DB is integrity-checked before writing.
+- **Binary backup** (`scripts/backup-binary.mjs` → `systemd/budget-tracker-binary-backup.{service,timer}` at 03:00 daily, 1h after the JSON export) — full DB via `better-sqlite3`'s online backup API, captures `__drizzle_migrations` and WAL state so it survives schema changes. Integrity-checked, kept locally at `/var/lib/budget-tracker/exports/budget-${TODAY}.db.bak`. **Not** pushed to Drive.
+
+Both scripts `process.exit(1)` on any failure including `PRAGMA integrity_check` returning `not ok`. The systemd units use `Type=oneshot` and surface failures via `journalctl -u budget-tracker-export` / `...-binary-backup`.
 
 ## Gotchas (things an agent would get wrong)
 
@@ -196,6 +207,37 @@ restart service. Verify via SSH curl to `127.0.0.1:3000/api/auth/me` (expect
 - **Fail2ban jail can only ban loopback** because Funnel terminates the
   external connection; in-app rate limiting is the real client-IP enforcement.
   Don't rely on fail2ban to block actual attackers — it's logging/structure.
+- **The JSON export's table list is now derived from a single source of
+  truth (the `userFacingTables` array in `scripts/export.mjs`).** The
+  pre-v1.6.0 hardcoded 4-table list silently dropped `user_settings` for
+  five releases; a DB restored from a pre-v1.6.0 JSON snapshot loses the
+  primary account + monthly budget. If you add a new user-facing table,
+  add it to that array AND to the import script's wipe/insert sequence,
+  AND update the FK ordering comment in `scripts/import.ts`. Bump the
+  snapshot version (1.1 → 1.2) and have `import.ts` accept the new field
+  with a back-compat default for the prior version.
+- **Import wipe/insert order respects FKs, not alphabetical.** The chain is
+  `users` → `accounts` → `categories` → `user_settings` →
+  `transactions` (and the same chain in the `DELETE FROM` calls, in
+  reverse). Don't "clean this up" to alphabetical — `user_settings`
+  references `accounts` (primary_account_id) and `users`; `transactions`
+  references everything.
+- **Binary backup holds a read lock for the copy duration.** `db.backup()`
+  uses SQLite's online backup API (safe, non-blocking readers), but a
+  killed-mid-copy leaves a partial file. `PRAGMA integrity_check` after
+  copy catches this. The systemd unit runs as `User=budget` and
+  `Type=oneshot`; failed runs surface in `journalctl -u
+  budget-tracker-binary-backup`.
+- **The binary backup captures `__drizzle_migrations`.** That's the point —
+  a restore from a 6-month-old `*.db.bak` against a freshly-migrated live
+  DB is safe because the backup replays its own migration journal first.
+  The JSON export cannot do this (it has no concept of schema), which is
+  why both layers exist.
+- **Pre-v1.6.0 JSON snapshots are unsafe to restore** (missing
+  `user_settings` rows). The `import.ts` default of `userSettings: []`
+  lets v1.0 snapshots load without crashing, but you lose the primary
+  account + budget. Re-export from the live DB after the v1.6.0 deploy
+  to refresh the on-Drive copy.
 
 ## Useful entry points to read first
 
@@ -222,3 +264,12 @@ restart service. Verify via SSH curl to `127.0.0.1:3000/api/auth/me` (expect
   the change.
 - `.github/workflows/{ci,build-and-test}.yml` — the CI chain. Read both
   before changing anything in CI.
+- `scripts/{export,import,backup-binary}.mjs` + `scripts/import.ts` — the
+  two-layer backup model. JSON snapshot (5 tables, v1.1) for human-readable
+  Drive backup; binary backup (full DB, `__drizzle_migrations` included) for
+  schema-safe local backup. Both run `PRAGMA integrity_check` on the
+  source/copy and `process.exit(1)` on `not ok`. `tests/server/backup.test.ts`
+  exercises both.
+- `systemd/budget-tracker-{export,binary-backup}.{service,timer}` — the
+  two nightly backup schedules (JSON at 02:00, binary at 03:00). Both are
+  `Type=oneshot`; failures surface in `journalctl -u <unit>`.
