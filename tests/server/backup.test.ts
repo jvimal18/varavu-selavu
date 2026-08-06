@@ -113,6 +113,22 @@ describe('runBackup', () => {
     }
   })
 
+  it('backup includes the compound (account_id, date) index (PR 5)', async () => {
+    seedFixture(ctx.db)
+    const outPath = join(ctx.tmpDir, 'backup.db.bak')
+    await runBackup({ dbPath: ctx.dbPath, outPath })
+
+    const backupDb = new Database(outPath, { readonly: true })
+    try {
+      const indexes = backupDb.prepare(
+        "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='transactions' AND name='idx_txn_account_date'",
+      ).all()
+      expect(indexes).toHaveLength(1)
+    } finally {
+      backupDb.close()
+    }
+  })
+
   it('throws if the source DB does not exist', async () => {
     const outPath = join(ctx.tmpDir, 'backup.db.bak')
     await expect(
