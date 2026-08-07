@@ -6,30 +6,35 @@
  * 1. Store-level contracts that the page drives (`stores/auth.ts`):
  *    the login error envelope (`e.data.message`, never the HTTP reason),
  *    the nested 429 `data.data.retryAfter`, the authenticated-session
- *    state, and the hard-reload logout. These run here and now with only
- *    the installed toolchain (vitest + pinia, node environment).
+ *    state, and the hard-reload logout.
  *
  * 2. Page-level state machine (mount-time `/api/auth/users` fetch +
  *    auto-select, no-PIN setup routing, the cooldown countdown ticking to
- *    zero and re-enabling the input, user-switch reset) requires mounting
- *    `pages/login.vue` with `@vue/test-utils` under a DOM environment.
- *    That harness is NOT installed (`@vue/test-utils`, `happy-dom` and
- *    `jsdom` are absent from the dependency set, and this lane must not
- *    touch package.json or vitest.config.ts). Those scenarios are declared
- *    as skipped suites below — each with the exact assertion it will make —
- *    so they stay visible in the matrix instead of silently vanishing.
+ *    zero and re-enabling the input, user-switch reset) by mounting the
+ *    REAL `pages/login.vue` under happy-dom. vitest.config.ts registers no
+ *    `@vitejs/plugin-vue` (config changes are out of scope), so the SFC is
+ *    compiled at test time with `vue/compiler-sfc` and mounted via
+ *    `@vue/test-utils` — see `compileSfc` below.
  *
  * Every assertion carries a name-the-break message per tests/README.md.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAuthStore, type SessionUser } from '~~/stores/auth'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { basename, dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { parse, compileScript } from 'vue/compiler-sfc'
+import type { Component } from 'vue'
+
+// @vitest-environment happy-dom
 
 /**
- * Gate for the mount-based suites. Flip to `true` together with adding
- * `@vue/test-utils` + a DOM environment to the dependency set.
+ * Gate for the mount-based suites. Requires `@vue/test-utils` + a DOM
+ * environment (both installed) and the Nuxt app context (stubbed below).
  */
-const MOUNT_HARNESS_AVAILABLE = false
+const MOUNT_HARNESS_AVAILABLE = true
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -52,6 +57,88 @@ function ofetchError(envelope: {
   err.data = envelope
   return err
 }
+
+// ---- Mount machinery (real SFC, no vitest plugin) --------------------------
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
+
+const VIMAL_USER = { id: 'u_vimal', name: 'Vimal', color: '#C2410C', hasPin: true }
+const PAVITHRA_USER = { id: 'u_pavithra', name: 'Pavithra', color: '#B45309', hasPin: true }
+const PAVITHRA_NO_PIN = { id: 'u_pavithra', name: 'Pavithra', color: '#B45309', hasPin: false }
+
+const navigateToMock = vi.fn()
+
+/**
+ * Mount the REAL `pages/login.vue` by compiling it with `@vue/compiler-sfc`
+ * at test time.
+ *
+ * vitest.config.ts registers no `@vitejs/plugin-vue`, so `import
+ * '~/pages/login.vue'` dies in the transform step (config changes are out of
+ * scope for this lane). `vue/compiler-sfc` is a first-class `vue` export; we
+ * parse the actual page source, compile its `<script setup>` + template
+ * (`inlineTemplate` folds the render into the component), write the result to
+ * a transient `.ts` file under the repo root, and dynamic-import it through
+ * Vite's pipeline (which strips the TS `interface`, resolves `~` aliases and
+ * node_modules, and leaves Nuxt auto-imports like `$fetch` / `navigateTo` /
+ * `definePageMeta` as free globals we stub below).
+ */
+let sfcTempDirs: string[] = []
+
+async function compileSfc(relativePath: string, id: string): Promise<Component> {
+  const source = readFileSync(resolve(ROOT, relativePath), 'utf8')
+  const { descriptor, errors } = parse(source, { filename: relativePath })
+  if (errors.length > 0) throw errors[0]
+  const { content } = compileScript(descriptor, {
+    id,
+    inlineTemplate: true,
+    templateOptions: { compilerOptions: {} },
+  })
+  const dir = mkdtempSync(join(ROOT, '.tmp-sfc-'))
+  sfcTempDirs.push(dir)
+  const out = join(dir, `${basename(relativePath, '.vue')}.ts`)
+  writeFileSync(out, content)
+  const mod = (await import(out)) as { default: Component }
+  return mod.default
+}
+
+interface PublicUserStub { id: string; name: string; color: string; hasPin: boolean }
+
+interface MountLoginOptions {
+  users?: PublicUserStub[]
+  /** Full `$fetch` replacement; defaults to resolving the users list. */
+  fetch?: (url: string) => unknown
+}
+
+/** Mount login.vue with a fresh Pinia and the Nuxt auto-import stubs. */
+async function mountLoginPage(
+  options: MountLoginOptions = {},
+): Promise<{ wrapper: VueWrapper; fetchMock: ReturnType<typeof vi.fn> }> {
+  setActivePinia(createPinia())
+  const fetchImpl = options.fetch ?? (() => ({ users: options.users ?? [VIMAL_USER, PAVITHRA_USER] }))
+  const fetchMock = vi.fn(fetchImpl)
+  vi.stubGlobal('$fetch', fetchMock)
+  vi.stubGlobal('navigateTo', navigateToMock)
+  vi.stubGlobal('definePageMeta', vi.fn())
+  const wrapper = mount(loginPageComponent)
+  await flushPromises()
+  return { wrapper, fetchMock }
+}
+
+/** Click a numpad digit button (the digit keys render as bare text). */
+async function pressDigit(wrapper: VueWrapper, digit: string): Promise<void> {
+  const key = wrapper.findAll('button').find((b) => b.text() === digit)
+  expect(key, `the numpad must render a ${digit} key for PIN entry`).toBeDefined()
+  await key?.trigger('click')
+}
+
+/** Count the filled PIN dots (the page renders the PIN as 6 dots). */
+function filledPinDots(wrapper: VueWrapper): number {
+  return wrapper.findAll('div')
+    .filter((d) => (d.attributes('class') ?? '').includes('w-3.5'))
+    .filter((d) => (d.attributes('class') ?? '').includes('bg-terra-700')).length
+}
+
+let loginPageComponent!: Component
 
 // ---- Store-level contracts (runnable today) -------------------------------
 
@@ -124,39 +211,122 @@ describe('auth store login/logout contracts', () => {
   })
 })
 
-// ---- Page-level state machine (mount-gated, documented gap) ----------------
+// ---- Page-level state machine (mounted UI) ---------------------------------
 
-/**
- * The scenarios below are the pure page-state-machine transitions. They are
- * skipped because mounting `pages/login.vue` needs `@vue/test-utils` + a
- * DOM environment that is not installed and cannot be added by this lane.
- * Each test title names the production break it will catch; the body
- * documents the exact mount-based assertion.
- */
 describe.skipIf(!MOUNT_HARNESS_AVAILABLE)('login page state machine (mounted UI)', () => {
-  it.skip('[7] on mount, fetches /api/auth/users, shows both seeded users, and auto-selects the first', () => {
-    // Mount pages/login.vue with $fetch stubbed to resolve
-    //   { users: [{ id: 'u_vimal', ... }, { id: 'u_pavithra', ... }] }.
-    // Assert both user names render and the first user (u_vimal) is selected
-    // — i.e. a regression that stops auto-selecting or drops a user would
-    // leave the PIN pad unbound.
+  beforeAll(async () => {
+    loginPageComponent = await compileSfc('pages/login.vue', 'login-page-test')
   })
 
-  it.skip('[8] routes a selected user without a PIN to /setup-pin?userId=<id> on submit', () => {
-    // Stub /api/auth/users with a hasPin:false user first; press submit.
-    // Assert navigateTo was called with { path: '/setup-pin', query: { userId } }
-    // — a regression would attempt a PIN login against a user who has no PIN.
+  afterAll(() => {
+    for (const dir of sfcTempDirs) rmSync(dir, { recursive: true, force: true })
+    sfcTempDirs = []
   })
 
-  it.skip('[11-page] the 429 cooldown ticks down to 0, clears the error, and re-enables the input', () => {
-    // Drive a 429 login (retryAfter: 2), advance the useIntervalFn ticker,
-    // assert the submit/numpad disable until 0 and that the error clears —
-    // a regression would leave the form locked forever.
+  beforeEach(() => {
+    vi.unstubAllGlobals()
+    navigateToMock.mockClear()
   })
 
-  it.skip('[12] switching users clears the PIN input and any shown error', () => {
-    // Enter a wrong PIN (error shown), click the other user button, assert
-    // pin is empty and error is null — a regression would leak the previous
-    // user's PIN state into the next attempt.
+  it('[7] on mount, fetches /api/auth/users, shows both seeded users, and auto-selects the first', async () => {
+    const { wrapper, fetchMock } = await mountLoginPage({ users: [VIMAL_USER, PAVITHRA_USER] })
+
+    expect(fetchMock, 'a mount regression would not fetch the user list at all').toHaveBeenCalledWith('/api/auth/users')
+    expect(wrapper.text(), 'a user-list regression would stop rendering a seeded household member').toContain('Vimal')
+    expect(wrapper.text(), 'a user-list regression would stop rendering a seeded household member').toContain('Pavithra')
+    expect(wrapper.text(), 'an auto-select regression would leave the PIN pad unbound (no Enter PIN card)').toContain('Enter PIN')
+    const vimalCard = wrapper.findAll('button').find((b) => b.text().includes('Vimal'))
+    expect(vimalCard?.classes(), 'an auto-select regression would not mark the first user as selected').toContain('border-terra-700')
+  })
+
+  it('[8] routes a selected user without a PIN to /setup-pin?userId=<id> on submit', async () => {
+    const { wrapper } = await mountLoginPage({ users: [PAVITHRA_NO_PIN] })
+
+    const submit = wrapper.findAll('button').find((b) => b.text().includes('Set up PIN'))
+    expect(submit, 'a no-PIN user must still render a submit action').toBeDefined()
+    await submit?.trigger('click')
+    await flushPromises()
+
+    expect(navigateToMock,
+      'a no-PIN submit regression would attempt a PIN login instead of routing to setup').toHaveBeenCalledWith(
+      { path: '/setup-pin', query: { userId: 'u_pavithra' } },
+    )
+  })
+
+  it('[11-page] the 429 cooldown ticks down to 0, clears the error, and re-enables the input', async () => {
+    vi.useFakeTimers()
+    try {
+      const { wrapper } = await mountLoginPage({
+        users: [VIMAL_USER],
+        fetch: async (url: string) => {
+          if (url === '/api/auth/users') return { users: [VIMAL_USER] }
+          throw ofetchError({
+            statusCode: 429,
+            statusMessage: 'Too Many Requests',
+            message: 'Too many failed attempts. Try again later.',
+            data: { retryAfter: 2 },
+          })
+        },
+      })
+
+      for (const digit of ['1', '2', '3', '4']) await pressDigit(wrapper, digit)
+      await flushPromises()
+
+      const submit = wrapper.findAll('button').find((b) => b.text().includes('Unlock'))
+      expect(submit, 'a hasPin user must render an Unlock submit action').toBeDefined()
+      await submit?.trigger('click')
+      await flushPromises()
+
+      // The 429 sets a 2s cooldown: the form locks with the human error text.
+      expect(wrapper.text(), 'a cooldown-start regression would not show the countdown lock').toContain('Locked — retry in 2s')
+      expect(wrapper.text(), 'a cooldown-start regression would drop the 429 error text').toContain('Too many failed attempts. Try again later.')
+
+      vi.advanceTimersByTime(1000)
+      await flushPromises()
+      expect(wrapper.text(), 'a countdown regression would not tick from 2s down to 1s').toContain('Locked — retry in 1s')
+
+      vi.advanceTimersByTime(1000)
+      await flushPromises()
+      expect(wrapper.text(), 'a countdown regression would keep the error visible after reaching zero').not.toContain('Too many failed attempts. Try again later.')
+      expect(wrapper.text(), 'a countdown regression would leave the form locked after reaching zero').toContain('Unlock')
+      const digitOne = wrapper.findAll('button').find((b) => b.text() === '1')
+      expect(digitOne?.attributes('disabled'),
+        'a countdown regression would leave the numpad disabled after reaching zero').toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('[12] switching users clears the PIN input and any shown error', async () => {
+    const { wrapper } = await mountLoginPage({
+      users: [VIMAL_USER, PAVITHRA_USER],
+      fetch: async (url: string) => {
+        if (url === '/api/auth/users') return { users: [VIMAL_USER, PAVITHRA_USER] }
+        throw ofetchError({
+          statusCode: 401,
+          statusMessage: 'Unauthorized',
+          message: 'Incorrect PIN. Please try again.',
+        })
+      },
+    })
+
+    // Enter a wrong 4-digit PIN and submit.
+    for (const digit of ['1', '2', '3', '4']) await pressDigit(wrapper, digit)
+    await flushPromises()
+    const submit = wrapper.findAll('button').find((b) => b.text().includes('Unlock'))
+    await submit?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text(), 'a failed-login regression would not surface the server error').toContain('Incorrect PIN. Please try again.')
+
+    // Switch to the other user: the previous error must clear and no PIN dots
+    // may survive (a regression would leak user A's PIN state into user B).
+    const pavithraCard = wrapper.findAll('button').find((b) => b.text().includes('Pavithra'))
+    expect(pavithraCard, 'the second user must render a selectable card').toBeDefined()
+    await pavithraCard?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text(), 'a user-switch regression would leak the previous user\'s error').not.toContain('Incorrect PIN. Please try again.')
+    expect(filledPinDots(wrapper), 'a user-switch regression would keep the previous user\'s PIN dots').toBe(0)
   })
 })

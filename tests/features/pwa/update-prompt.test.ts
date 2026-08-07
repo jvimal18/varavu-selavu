@@ -12,22 +12,31 @@
  *    the composable is exercised.
  *
  * 2. The toast state machine (shown only when `$pwa.needRefresh`, renders
- *    version + first two bullets, Escape dismissal) requires mounting
- *    `PwaUpdatePrompt.vue` with `@vue/test-utils` under a DOM environment.
- *    That harness is NOT installed and cannot be added by this lane, so
- *    those scenarios are declared as skipped suites with the exact assertion
- *    each will make (documented gap, per tests/README.md browser-test
- *    policy).
+ *    version + first two bullets, Escape dismissal) by mounting the REAL
+ *    `PwaUpdatePrompt.vue` under happy-dom. vitest.config.ts registers no
+ *    `@vitejs/plugin-vue` (config changes are out of scope), so the SFC is
+ *    compiled at test time with `vue/compiler-sfc` and mounted via
+ *    `@vue/test-utils` with `$pwa` / `useAppUpdate` stubbed — see
+ *    `compileSfc` / `mountToast` below.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { APP_VERSION } from '~~/composables/useAppVersion'
 import { useAppUpdate, type VersionInfo } from '~~/composables/useAppUpdate'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { basename, dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { parse, compileScript } from 'vue/compiler-sfc'
+import { reactive, ref, type Component } from 'vue'
+
+// @vitest-environment happy-dom
 
 /**
- * Gate for the mount-based suites. Flip to `true` together with adding
- * `@vue/test-utils` + a DOM environment to the dependency set.
+ * Gate for the mount-based suites. Requires `@vue/test-utils` + a DOM
+ * environment (both installed) and the `$pwa` plugin + `useEventListener`
+ * (stubbed below).
  */
-const MOUNT_HARNESS_AVAILABLE = false
+const MOUNT_HARNESS_AVAILABLE = true
 
 // ---- Minimal Nuxt auto-import environment ---------------------------------
 
@@ -46,6 +55,90 @@ function stubNuxtGlobals(): void {
   })
   vi.stubGlobal('readonly', (value: unknown) => value)
 }
+
+// ---- Mount machinery (real SFC, no vitest plugin) ---------------------------
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
+
+/**
+ * Mount the REAL `components/PwaUpdatePrompt.vue` by compiling it with
+ * `@vue/compiler-sfc` at test time. vitest.config.ts registers no
+ * `@vitejs/plugin-vue`, so `import '~/components/PwaUpdatePrompt.vue'` dies
+ * in the transform step (config changes are out of scope for this lane).
+ * `vue/compiler-sfc` is a first-class `vue` export; we parse the actual
+ * component source, compile its `<script setup>` + template
+ * (`inlineTemplate` folds the render in), write the result to a transient
+ * `.ts` file under the repo root, and dynamic-import it through Vite's
+ * pipeline. Nuxt auto-imports (`useNuxtApp`, `useAppUpdate`) remain free
+ * globals and are stubbed per test.
+ */
+let sfcTempDirs: string[] = []
+
+async function compileSfc(relativePath: string, id: string): Promise<Component> {
+  const source = readFileSync(resolve(ROOT, relativePath), 'utf8')
+  const { descriptor, errors } = parse(source, { filename: relativePath })
+  if (errors.length > 0) throw errors[0]
+  const { content } = compileScript(descriptor, {
+    id,
+    inlineTemplate: true,
+    templateOptions: { compilerOptions: {} },
+  })
+  const dir = mkdtempSync(join(ROOT, '.tmp-sfc-'))
+  sfcTempDirs.push(dir)
+  const out = join(dir, `${basename(relativePath, '.vue')}.ts`)
+  writeFileSync(out, content)
+  const mod = (await import(out)) as { default: Component }
+  return mod.default
+}
+
+interface MountToastOptions {
+  /** Drives `$pwa.needRefresh` → the toast's `v-if` gate. */
+  needRefresh: boolean
+  /** The update `useAppUpdate` hands the toast; null = generic fallback. */
+  availableUpdate?: VersionInfo | null
+}
+
+/**
+ * Mount the toast with a reactive `$pwa` (so `cancelPrompt` flipping
+ * `needRefresh` actually hides the toast) and a `useAppUpdate` stub. The
+ * Transition + Icon are stubbed so leave-animation timing and the unresolved
+ * global component cannot make the assertions flaky.
+ */
+async function mountToast(options: MountToastOptions): Promise<{
+  wrapper: VueWrapper
+  cancelPrompt: ReturnType<typeof vi.fn>
+  clearAvailableUpdate: ReturnType<typeof vi.fn>
+  fetchUpdate: ReturnType<typeof vi.fn>
+}> {
+  const pwa = reactive<{ needRefresh: boolean }>({ needRefresh: options.needRefresh })
+  const cancelPrompt = vi.fn(() => { pwa.needRefresh = false })
+  const updateServiceWorker = vi.fn(async () => {})
+  pwa.needRefresh = options.needRefresh
+  ;(pwa as { cancelPrompt?: () => void }).cancelPrompt = cancelPrompt
+  ;(pwa as { updateServiceWorker?: () => Promise<void> }).updateServiceWorker = updateServiceWorker
+
+  const clearAvailableUpdate = vi.fn()
+  const fetchUpdate = vi.fn()
+
+  vi.stubGlobal('useNuxtApp', () => ({ $pwa: pwa }))
+  vi.stubGlobal('useAppUpdate', () => ({
+    availableUpdate: ref(options.availableUpdate ?? null),
+    isLoading: ref(false),
+    error: ref(null),
+    lastChecked: ref(null),
+    fetchUpdate,
+    clearAvailableUpdate,
+  }))
+  vi.stubGlobal('navigateTo', vi.fn())
+
+  const wrapper = mount(toastComponent, {
+    global: { stubs: { transition: true, Icon: true } },
+  })
+  await flushPromises()
+  return { wrapper, cancelPrompt, clearAvailableUpdate, fetchUpdate }
+}
+
+let toastComponent!: Component
 
 // ---- Version discovery contract (runnable today) ---------------------------
 
@@ -108,33 +201,62 @@ describe('useAppUpdate version discovery', () => {
   })
 })
 
-// ---- Toast state machine (mount-gated, documented gap) ---------------------
+// ---- Toast state machine (mounted UI) --------------------------------------
 
-/**
- * The toast behavior depends on the `$pwa` plugin (via `useNuxtApp`) and
- * on `useEventListener(document, ...)`, which requires a DOM and mounting
- * the component. Each test title names the production break it will catch;
- * the body documents the exact mounted assertion.
- */
 describe.skipIf(!MOUNT_HARNESS_AVAILABLE)('PwaUpdatePrompt toast behavior (mounted UI)', () => {
-  it.skip('[14] hides the toast when $pwa.needRefresh is false', () => {
-    // Mount PwaUpdatePrompt with $pwa stub { needRefresh: false } and
-    // useAppUpdate stubbed to a no-op. Assert the role="alert" wrapper is
-    // not rendered — a regression would nag users on every page load.
+  beforeAll(async () => {
+    toastComponent = await compileSfc('components/PwaUpdatePrompt.vue', 'update-prompt-test')
   })
 
-  it.skip('[15] shows the availableUpdate.version plus the first two bullets when an update is waiting', () => {
-    // Mount with $pwa.needRefresh = true and availableUpdate =
-    // { version: 'v9.9.9', bullets: ['b1 **bold**', 'b2 `code`', 'b3'] }.
-    // Assert the toast renders v9.9.9 and exactly b1 + b2 with inline
-    // markdown stripped (plainTextBullet) and never b3 — a regression would
-    // leak markdown asterisks or render the whole list.
+  afterAll(() => {
+    for (const dir of sfcTempDirs) rmSync(dir, { recursive: true, force: true })
+    sfcTempDirs = []
   })
 
-  it.skip('[16] dismisses on Escape and clears the available update', () => {
-    // Mount with the toast visible, dispatch a keydown Escape on document,
-    // assert $pwa.cancelPrompt was called and the available update is
-    // cleared (toast unmounts) — a regression would leave the prompt
-    // stubbornly on screen.
+  beforeEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('[14] hides the toast when $pwa.needRefresh is false', async () => {
+    const { wrapper } = await mountToast({ needRefresh: false })
+
+    expect(wrapper.find('[role="alert"]').exists(),
+      'a toast regression would render the update prompt when no update is waiting').toBe(false)
+    wrapper.unmount()
+  })
+
+  it('[15] shows the availableUpdate.version plus the first two bullets when an update is waiting', async () => {
+    const { wrapper } = await mountToast({
+      needRefresh: true,
+      availableUpdate: { version: 'v9.9.9', date: '2099-01-01', bullets: ['b1 **bold**', 'b2 `code`', 'b3'] },
+    })
+
+    const toast = wrapper.find('[role="alert"]')
+    expect(toast.exists(), 'a toast regression would not render the alert when an update is waiting').toBe(true)
+    expect(toast.text(), 'a toast regression would not announce the fetched version').toContain('v9.9.9')
+    expect(toast.text(), 'a bullet regression would leak markdown asterisks into the toast').toContain('b1 bold')
+    expect(toast.text(), 'a bullet regression would leak markdown backticks into the toast').toContain('b2 code')
+    expect(toast.text(), 'a bullet regression would render more than the first two bullets').not.toContain('b3')
+    expect(toast.text(), 'a bullet regression would leak raw markdown into the toast').not.toContain('**')
+    expect(toast.text(), 'a bullet regression would leak raw backticks into the toast').not.toContain('`')
+    wrapper.unmount()
+  })
+
+  it('[16] dismisses on Escape and clears the available update', async () => {
+    const { wrapper, cancelPrompt, clearAvailableUpdate } = await mountToast({
+      needRefresh: true,
+      availableUpdate: { version: 'v9.9.9', date: '2099-01-01', bullets: ['b1', 'b2'] },
+    })
+
+    expect(wrapper.find('[role="alert"]').exists(), 'a precondition regression would start without the toast').toBe(true)
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await flushPromises()
+
+    expect(cancelPrompt, 'an Escape dismissal regression would not call $pwa.cancelPrompt').toHaveBeenCalled()
+    expect(clearAvailableUpdate, 'an Escape dismissal regression would not clear the announced update').toHaveBeenCalled()
+    expect(wrapper.find('[role="alert"]').exists(),
+      'an Escape dismissal regression would leave the toast on screen').toBe(false)
+    wrapper.unmount()
   })
 })
