@@ -1,0 +1,164 @@
+{
+  "exportedAt": "2026-05-31T12:00:00.000Z",
+  "version": "1.0",
+  "users": [
+    {
+      "id": "u_vimal",
+      "name": "Vimal",
+      "color": "#C2410C",
+      "pin_hash": null,
+      "created_at": "2026-05-01T00:00:00.000Z"
+    },
+    {
+      "id": "u_pavithra",
+      "name": "Pavithra",
+      "color": "#B45309",
+      "pin_hash": null,
+      "created_at": "2026-05-01T00:00:00.000Z"
+    }
+  ],
+  "accounts": [
+    {
+      "id": "a_hdfc",
+      "name": "HDFC Salary",
+      "type": "bank",
+      "institution": "HDFC",
+      "last4": "3344",
+      "opening_balance": 2500000,
+      "credit_limit": null,
+      "statement_day": null,
+      "due_day": null,
+      "currency": "INR",
+      "color": "#0F766E",
+      "icon": "landmark",
+      "archived": 0,
+      "created_at": "2026-05-01T00:00:00.000Z",
+      "updated_at": "2026-05-01T00:00:00.000Z"
+    },
+    {
+      "id": "a_cash",
+      "name": "Cash",
+      "type": "cash",
+      "institution": null,
+      "last4": null,
+      "opening_balance": 50000,
+      "credit_limit": null,
+      "statement_day": null,
+      "due_day": null,
+      "currency": "INR",
+      "color": "#57534E",
+      "icon": "banknote",
+      "archived": 0,
+      "created_at": "2026-05-01T00:00:00.000Z",
+      "updated_at": "2026-05-01T00:00:00.000Z"
+    }
+  ],
+  "categories": [
+    {
+      "id": "c_groceries",
+      "name": "Groceries",
+      "icon": "shopping-basket",
+      "color": "#C2410C",
+      "parent_id": null,
+      "type": "expense",
+      "is_essential": 1,
+      "sort_order": 30,
+      "archived": 0,
+      "created_at": "2026-05-01T00:00:00.000Z"
+    },
+    {
+      "id": "c_dining",
+      "name": "Food & Dining",
+      "icon": "utensils",
+      "color": "#D97706",
+      "parent_id": null,
+      "type": "expense",
+      "is_essential": 0,
+      "sort_order": 40,
+      "archived": 0,
+      "created_at": "2026-05-01T00:00:00.000Z"
+    },
+    {
+      "id": "c_restaurants",
+      "name": "Restaurants",
+      "icon": "utensils",
+      "color": "#D97706",
+      "parent_id": "c_dining",
+      "type": "expense",
+      "is_essential": 0,
+      "sort_order": 41,
+      "archived": 0,
+      "created_at": "2026-05-01T00:00:00.000Z"
+    },
+    {
+      "id": "c_salary",
+      "name": "Salary",
+      "icon": "briefcase",
+      "color": "#15803D",
+      "parent_id": null,
+      "type": "income",
+      "is_essential": 0,
+      "sort_order": 200,
+      "archived": 0,
+      "created_at": "2026-05-01T00:00:00.000Z"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "t_groceries_1",
+      "type": "expense",
+      "amount": 124500,
+      "date": "2026-05-15",
+      "account_id": "a_hdfc",
+      "to_account_id": null,
+      "category_id": "c_groceries",
+      "description": "Monthly groceries",
+      "notes": "Big basket run",
+      "spent_by": "u_vimal",
+      "created_at": "2026-05-15T10:00:00.000Z",
+      "updated_at": "2026-05-15T10:00:00.000Z"
+    },
+    {
+      "id": "t_salary_1",
+      "type": "income",
+      "amount": 15000000,
+      "date": "2026-05-01",
+      "account_id": "a_hdfc",
+      "to_account_id": null,
+      "category_id": "c_salary",
+      "description": "May salary",
+      "notes": null,
+      "spent_by": "u_vimal",
+      "created_at": "2026-05-01T09:00:00.000Z",
+      "updated_at": "2026-05-01T09:00:00.000Z"
+    },
+    {
+      "id": "t_dinner_cash",
+      "type": "expense",
+      "amount": 45000,
+      "date": "2026-05-20",
+      "account_id": "a_cash",
+      "to_account_id": null,
+      "category_id": "c_dining",
+      "description": "Dinner out",
+      "notes": null,
+      "spent_by": "u_pavithra",
+      "created_at": "2026-05-20T18:30:00.000Z",
+      "updated_at": "2026-05-20T18:30:00.000Z"
+    },
+    {
+      "id": "t_restaurant_card",
+      "type": "expense",
+      "amount": 285000,
+      "date": "2026-05-22",
+      "account_id": "a_cash",
+      "to_account_id": null,
+      "category_id": "c_restaurants",
+      "description": "Anniversary dinner",
+      "notes": "Pavithra picked the place",
+      "spent_by": "u_pavithra",
+      "created_at": "2026-05-22T20:00:00.000Z",
+      "updated_at": "2026-05-22T20:00:00.000Z"
+    }
+  ]
+}

@@ -29,8 +29,48 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Invalid transaction data' })
   }
   const db = useDb()
-  const exists = await db.select().from(schema.transactions).where(eq(schema.transactions.id, id)).get()
-  if (!exists) throw createError({ statusCode: 404, statusMessage: 'Transaction not found' })
+  const existing = await db.select().from(schema.transactions).where(eq(schema.transactions.id, id)).get()
+  if (!existing) throw createError({ statusCode: 404, statusMessage: 'Transaction not found' })
+
+  // Merge patch with existing row to re-validate type-compat invariants
+  // after the update. Without this, a PATCH could turn an expense into a
+  // transfer without a toAccountId, or strip a required category.
+  const merged: Record<string, any> = { ...existing, ...parsed.data }
+  if (merged.type === 'transfer') {
+    if (!merged.toAccountId) throw createError({ statusCode: 400, statusMessage: 'toAccountId required for transfer' })
+    if (merged.toAccountId === merged.accountId) throw createError({ statusCode: 400, statusMessage: 'Cannot transfer to same account' })
+    if (merged.categoryId) throw createError({ statusCode: 400, statusMessage: 'Transfers cannot have a category' })
+  } else if (merged.type === 'interest') {
+    if (merged.toAccountId) throw createError({ statusCode: 400, statusMessage: 'Interest transactions cannot have a toAccountId' })
+  } else {
+    if (!merged.categoryId) throw createError({ statusCode: 400, statusMessage: 'Category required for expense/income' })
+  }
+
+  // Verify foreign-key references exist before update.
+  if (parsed.data.accountId !== undefined) {
+    const accountExists = await db
+      .select({ id: schema.accounts.id })
+      .from(schema.accounts)
+      .where(eq(schema.accounts.id, parsed.data.accountId))
+      .get()
+    if (!accountExists) throw createError({ statusCode: 404, statusMessage: 'Account not found' })
+  }
+  if (parsed.data.toAccountId) {
+    const toAccountExists = await db
+      .select({ id: schema.accounts.id })
+      .from(schema.accounts)
+      .where(eq(schema.accounts.id, parsed.data.toAccountId))
+      .get()
+    if (!toAccountExists) throw createError({ statusCode: 404, statusMessage: 'Destination account not found' })
+  }
+  if (parsed.data.categoryId) {
+    const categoryExists = await db
+      .select({ id: schema.categories.id })
+      .from(schema.categories)
+      .where(eq(schema.categories.id, parsed.data.categoryId))
+      .get()
+    if (!categoryExists) throw createError({ statusCode: 404, statusMessage: 'Category not found' })
+  }
 
   const update: Record<string, any> = { updatedAt: _nowISO() }
   for (const [k, v] of Object.entries(parsed.data)) {

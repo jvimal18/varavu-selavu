@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { defineEventHandler, getQuery } from 'h3'
+import { defineEventHandler, getQuery, createError } from 'h3'
 import { useDb, schema } from '~~/server/db/client'
-import { and, eq, gte, lte, like, desc, sql, inArray } from 'drizzle-orm'
+import { and, eq, gte, lte, like, desc, sql } from 'drizzle-orm'
 
 const Query = z.object({
   from: z.string().optional(),         // YYYY-MM-DD
@@ -22,7 +22,11 @@ const Query = z.object({
 export default defineEventHandler(async (event) => {
   const parsed = Query.safeParse(getQuery(event))
   if (!parsed.success) {
-    return { error: 'Invalid query', issues: parsed.error.format() }
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Invalid query',
+      data: { issues: parsed.error.format() },
+    })
   }
   const q = parsed.data
   const db = useDb()

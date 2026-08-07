@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { defineEventHandler, readBody, createError } from 'h3'
 import { useDb, schema } from '~~/server/db/client'
 import { requireUser } from '~~/server/utils/auth'
+import { eq } from 'drizzle-orm'
 
 const Body = z.object({
   type: z.enum(['expense', 'income', 'transfer', 'interest']),
@@ -39,6 +40,33 @@ export default defineEventHandler(async (event) => {
   }
 
   const db = useDb()
+
+  // Verify foreign-key references exist before insert. Without this, an
+  // unknown accountId/categoryId/toAccountId would bubble a 500 from the
+  // SQLite FK constraint instead of a structured 404.
+  const accountExists = await db
+    .select({ id: schema.accounts.id })
+    .from(schema.accounts)
+    .where(eq(schema.accounts.id, d.accountId))
+    .get()
+  if (!accountExists) throw createError({ statusCode: 404, statusMessage: 'Account not found' })
+  if (d.toAccountId) {
+    const toAccountExists = await db
+      .select({ id: schema.accounts.id })
+      .from(schema.accounts)
+      .where(eq(schema.accounts.id, d.toAccountId))
+      .get()
+    if (!toAccountExists) throw createError({ statusCode: 404, statusMessage: 'Destination account not found' })
+  }
+  if (d.categoryId) {
+    const categoryExists = await db
+      .select({ id: schema.categories.id })
+      .from(schema.categories)
+      .where(eq(schema.categories.id, d.categoryId))
+      .get()
+    if (!categoryExists) throw createError({ statusCode: 404, statusMessage: 'Category not found' })
+  }
+
   const id = _newId('txn')
   const now = _nowISO()
   await db.insert(schema.transactions).values({

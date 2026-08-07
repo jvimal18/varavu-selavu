@@ -28,5 +28,9 @@ export default defineConfig({
     // Nuxt HTTP tests set process.env before build and use a module-level DB
     // singleton. Keep those contexts serial; pure suites retain their behavior.
     fileParallelism: false,
+    // The top-level `await createNuxtTestHarness()` in each HTTP test file
+    // builds a full Nuxt server + runs migrations + seeds. The heavier files
+    // (accounts, transactions, dashboard, backup) exceed the 120s default.
+    hookTimeout: 300_000,
   },
 })
