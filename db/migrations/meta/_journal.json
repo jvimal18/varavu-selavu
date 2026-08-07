@@ -19,15 +19,8 @@
     {
       "idx": 2,
       "version": "6",
-      "when": 1762650000000,
-      "tag": "0002_sessions",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1762930800000,
-      "tag": "0003_idx_txn_account_date",
+      "when": 1786049060395,
+      "tag": "0002_sessions_and_index",
       "breakpoints": true
     }
   ]
