@@ -21,8 +21,8 @@ pnpm dev                          # http://localhost:3000
 
 - `pnpm db:reset` — wipes `$NUXT_DB_PATH` (defaults to `./data/dev.db`), then
   re-migrates + re-seeds. Local dev only; never run on the Pi.
-- `pnpm test:run` for the Vitest suite (124 tests; 64 pure-function unit tests for
-  the financial-math and dashboard-period code, 8 backup integration tests, 17 CSRF
+- `pnpm test:run` for the Vitest suite (125 tests; 64 pure-function unit tests for
+  the financial-math and dashboard-period code, 9 backup integration tests, 17 CSRF
   middleware tests, 11 CSP middleware tests, 24 auth tests). `pnpm test` for watch
   mode.
   Pre-PR sanity check: `pnpm typecheck && pnpm test:run && pnpm build`.

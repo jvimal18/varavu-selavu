@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | **Current release** | **v1.5.0** (2026-08-03) — PWA update prompt with version-aware changelog |
-| **Next release (target)** | v1.6.0 — Core Stability sweep (Phase 1) · PR 1 (tests + CI) **merged** (#1); PR 2 (backup hardening) **merged** (#2); PR 3 (security headers + CSRF) **merged** (#3); PR 4 (server-side sessions) done locally on `phase1/pr4-server-side-sessions`, ready for review |
+| **Next release (target)** | v1.6.0 — Core Stability sweep (Phase 1) · PR 1 (tests + CI) **merged** (#1); PR 2 (backup hardening) **merged** (#2); PR 3 (security headers + CSRF) **merged** (#3); PR 4 (server-side sessions) **merged** (#4); PR 5 (compound index) done locally on `phase1/pr5-compound-index`, ready for review |
 | **Long-term vision** | Self-hosted personal finance OS (expenses + budgets + investments + loans + AI) |
 | **Status legend** | ✅ Shipped &nbsp; · &nbsp; 🔄 Partial / in progress &nbsp; · &nbsp; ⏳ Not started &nbsp; · &nbsp; ❌ Deferred / cut |
 
@@ -32,7 +32,7 @@ exceptions — they can be cherry-picked into any release.
 
 | Phase | Theme | Target version | Status |
 |---|---|---|---|
-| 1 | Core Stability | v1.6.0 | 🔄 ~100% — PR 1 (tests + CI) **merged** (#1, `7ae8bc8`). PR 2 (backup hardening) **merged** (#2, `d103b3d`). PR 3 (security headers + CSRF) **merged** (#3, `1353241`). PR 4 (server-side sessions) **done locally on `phase1/pr4-server-side-sessions`** (commit `e75b2d2`); rebased onto `origin/main`; ready for review. PR 5 (compound index) last. |
+| 1 | Core Stability | v1.6.0 | ✅ **100% — all 5 PRs done.** PR 1 (tests + CI) **merged** (#1, `7ae8bc8`). PR 2 (backup hardening) **merged** (#2, `d103b3d`). PR 3 (security headers + CSRF) **merged** (#3, `1353241`). PR 4 (server-side sessions) **merged** (#4, `d73c7e0`). PR 5 (compound index) **done locally on `phase1/pr5-compound-index`** (commit `26c268e`); rebased onto `origin/main`; ready for review. |
 | 2 | Budget Management | v1.7.0 | 🔄 ~25% (monthly budget + progress shipped; rest is new) |
 | 3 | Better Finance Tracking | v1.8.0 | 🔄 ~30% (filters, transfers, archive done) |
 | 4 | Advanced Reporting | v1.9.0 | 🔄 ~45% (lifetime tiles, daily-spends, top categories done; timeline + heatmap added) |
@@ -89,7 +89,7 @@ no new surface area.
 
 Vitest (Node env, Vite-native) with `@nuxt/test-utils` installed. `vitest.config.ts` aliases `~~` → repo root, `tests/**/*.test.ts` is the include pattern, `isolate: true` for per-file isolation. Per-test workers are deferred — current suite is pure functions, so the shared pool is fine.
 
-What shipped in PR 1 (64 unit tests across 4 files; 124 total with PR 2's backup + PR 3's CSRF/CSP + PR 4's auth suites):
+What shipped in PR 1 (64 unit tests across 4 files; 125 total with PR 2's backup + PR 3's CSRF/CSP + PR 4's auth + PR 5's index-existence suites):
 - `tests/unit/money.test.ts` — paise conversions, `formatPaise` edge cases (negative, zero, lakh grouping, rounding).
 - `tests/unit/dates.test.ts` — `localISODate` for UTC+0, UTC+5:30 (IST), DST boundaries.
 - `tests/unit/accountBalances.test.ts` — golden sums for `bank` / `credit_card` / `mutual_fund` across all four `transactions.type` values; archived accounts excluded from liquidity.
@@ -133,17 +133,17 @@ No deploy from CI — deploys stay manual (`./scripts/deploy.sh`). The self-host
 | **Restore validation** (open the backup, count rows per table) | ✅ done (v1.6.0) | `tests/server/backup.test.ts` — 8 integration tests (backup has all 5 tables, valid SQLite, captures `__drizzle_migrations`, failure paths) |
 | **Off-Pi backup of the raw DB file** (e.g. snapshot to NAS / second rclone remote) | ⏳ not started | Stretch; JSON + binary backups are the safety net for now |
 
-### 6. Performance Optimization — 🔄 partial
+### 6. Performance Optimization — 🔄 partial (compound index done in v1.6.0; rest deferred)
 
 | Sub-item | Status | Where |
 |---|---|---|
 | DB indexes on `transactions(date)`, `(account_id)`, `(category_id)`, `(spent_by)`, `(type)` | ✅ done (v1.0.0) | `db/migrations/0000_goofy_nicolaos.sql`, mirrored in `server/db/schema.ts` |
 | Dashboard aggregate endpoints in a single round-trip | ✅ done (v1.3.0+) | `GET /api/dashboard` |
 | Day-by-day spends series in SQL (not in-memory) | ✅ done (v1.3.0) | `server/api/dashboard.get.ts` |
+| **Compound index on (account_id, date)** for the per-account detail page | ✅ done (v1.6.0) | `db/migrations/0003_idx_txn_account_date.sql`, mirrored in `server/db/schema.ts` (last entry in the `transactions` table index list). Backup test in `tests/server/backup.test.ts` asserts the index exists in the binary backup via `sqlite_master`. EXPLAIN QUERY PLAN verification is an operational step after the first Pi deploy. |
 | **Dashboard caching** (short TTL on `/api/dashboard`) | ⏳ not started | Currently recomputed on every request |
 | **Pagination on `/api/transactions`** | ⏳ not started | Currently `LIMIT 200` ceiling; no `offset` paging yet (UI does infinite scroll from the cap) |
 | **Virtual scrolling** in the transactions list | ⏳ not started | At <200 rows the rendered list is fine; revisit at ~5k |
-| **Compound index on (account_id, date)** for the per-account detail page | ⏳ not started | Will matter when account histories grow |
 
 ---
 
@@ -156,8 +156,8 @@ No deploy from CI — deploys stay manual (`./scripts/deploy.sh`). The self-host
 | PR 1 | Tests + CI (Vitest + GitHub Actions) | ✅ done & merged (commits `91b347d`, `e20792f`, `85134ca`, `840747b`, PR #1). 64 unit tests, hosted→self-hosted+docker fallback CI chain, actions v5 (Node 24). |
 | PR 2 | Backup hardening (binary + user_settings fix + integrity check) | ✅ **merged to `main`** (PR #2, commit `d103b3d` from `29e9f7b`). Part of v1.6.0. |
 | PR 3 | Security headers + CSRF (Origin check) | ✅ done locally — branch `phase1/pr3-security-headers` (commit `ba982c3`); rebased onto `origin/main`; ready for review. Part of v1.6.0. |
-| PR 4 | Server-side sessions (SHA-256 token, 5-min debounce, force re-login on deploy) | ✅ done locally — branch `phase1/pr4-server-side-sessions` (commit `e75b2d2`); rebased onto `origin/main`; ready for review. Part of v1.6.0. |
-| PR 5 | Performance: compound index only | ⏳ |
+| PR 4 | Server-side sessions (SHA-256 token, 5-min debounce, force re-login on deploy) | ✅ **merged to `main`** (PR #4, `d73c7e0` from `e75b2d2`). Part of v1.6.0. |
+| PR 5 | Performance: compound index only | ✅ done locally — branch `phase1/pr5-compound-index` (commit `26c268e`); rebased onto `origin/main`; ready for review. Part of v1.6.0. |
 | PR 6 (v1.6.1) | Active sessions UI | ⏳ |
 | PR 7 (v1.6.1) | PIN recovery | ⏳ |
 
@@ -182,7 +182,7 @@ until benchmarked and a UI consumer exists, respectively), virtual scrolling
 
 Tests without CI are a promise; CI without tests is empty. Shipped together on 2026-08-07 (commits `91b347d`, `e20792f`, `85134ca`, `840747b`, PR #1).
 
-**Tests (64 unit tests across 4 files; 124 total with PR 2's backup + PR 3's CSRF/CSP + PR 4's auth suites):**
+**Tests (64 unit tests across 4 files; 125 total with PR 2's backup + PR 3's CSRF/CSP + PR 4's auth + PR 5's index-existence suites):**
 - `tests/unit/money.test.ts` — paise conversions, `formatPaise` edge cases (negative, zero, lakh grouping, rounding).
 - `tests/unit/dates.test.ts` — `localISODate` for UTC+0, UTC+5:30 (IST), DST boundaries.
 - `tests/unit/accountBalances.test.ts` — golden sums for `bank` / `credit_card` / `mutual_fund` across all four `transactions.type` values; archived accounts excluded from liquidity.
@@ -450,19 +450,41 @@ table + API.
   10-second-per-user inconvenience is the right tradeoff vs ~40 lines
   of dual-path code and a testing surface.
 
-### PR 5 — Performance: compound index only
+### PR 5 — Performance: compound index only — ✅ done locally, ready for review (v1.6.0)
 
 Defer the dashboard cache and the `total: COUNT(*)` field. The cache is
 premature optimization until we benchmark; the `total` field has no UI
 consumer today (the transactions page does infinite scroll from a 200-row
 cap). Both can land in a later release once we have evidence they're needed.
 
-- Migration `0003_*.sql` (mirror in `scripts/migrate.mjs`):
+**Shipped on `phase1/pr5-compound-index` (commit `26c268e`):**
+
+- **New `db/migrations/0003_idx_txn_account_date.sql`**:
   `CREATE INDEX idx_txn_account_date ON transactions(account_id, date);`
-  Covers the per-account detail page (most-frequent access pattern after the
-  dashboard). Small change, real win.
-- `EXPLAIN QUERY PLAN` before/after on a representative dataset (seed
-  ~5k transactions) to confirm the index is used.
+  Covers the per-account detail page (`/accounts/[id]`) — the most-frequent
+  access pattern after the dashboard. Mirrored in
+  `db/migrations/meta/_journal.json` (idx: 3 entry); `idx_txn_account_date`
+  added to `server/db/schema.ts` as the last entry in the `transactions`
+  table index list. `scripts/migrate.mjs` needs no change — it
+  auto-discovers migrations from `db/migrations/` + the journal.
+- **New test in `tests/server/backup.test.ts`** asserts the index exists
+  in the binary backup via `sqlite_master`. The backup captures the full
+  DB including all indexes, so the index round-trips correctly.
+- **Scope** — schema + migration + test only. No code changes.
+  `EXPECTED_TABLES` in `scripts/backup-binary.mjs` unchanged (6
+  user-facing tables; an index is not a table). No env-var changes.
+
+**Operational step after the first v1.6.0 Pi deploy:** verify the
+query planner actually uses the new index (the test confirms the index
+exists, not that the planner picks it):
+```sh
+sqlite3 /var/lib/budget-tracker/budget.db
+EXPLAIN QUERY PLAN
+  SELECT * FROM transactions WHERE account_id = 'a1' ORDER BY date DESC LIMIT 50;
+-- should show: USING INDEX idx_txn_account_date
+```
+If it shows a full scan, check the migration ran (`SELECT * FROM
+__drizzle_migrations;`) and re-run `pnpm db:migrate`.
 
 ### PR 6 (v1.6.1) — Active sessions UI
 

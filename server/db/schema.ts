@@ -76,6 +76,7 @@ export const transactions = sqliteTable(
     categoryIdx: index('idx_txn_category').on(t.categoryId),
     spentByIdx: index('idx_txn_spent_by').on(t.spentBy),
     typeIdx: index('idx_txn_type').on(t.type),
+    accountDateIdx: index('idx_txn_account_date').on(t.accountId, t.date),
   })
 )
 

@@ -8,6 +8,8 @@ CREATE TABLE `sessions` (
 	`expires_at` text NOT NULL,
 	`revoked_at` text,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
-);--> statement-breakpoint
+);
+--> statement-breakpoint
 CREATE INDEX `idx_sessions_user` ON `sessions` (`user_id`);--> statement-breakpoint
-CREATE INDEX `idx_sessions_expires` ON `sessions` (`expires_at`);
+CREATE INDEX `idx_sessions_expires` ON `sessions` (`expires_at`);--> statement-breakpoint
+CREATE INDEX `idx_txn_account_date` ON `transactions` (`account_id`,`date`);

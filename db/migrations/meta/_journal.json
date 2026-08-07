@@ -19,8 +19,8 @@
     {
       "idx": 2,
       "version": "6",
-      "when": 1762650000000,
-      "tag": "0002_sessions",
+      "when": 1786049060395,
+      "tag": "0002_sessions_and_index",
       "breakpoints": true
     }
   ]
