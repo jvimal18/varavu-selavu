@@ -115,6 +115,9 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    // Preserve Nitro's default error serialization while applying the app's
+    // authoritative security headers to early 401/403/500 responses.
+    errorHandler: '~/server/error-handler.ts',
     experimental: {
       // better-sqlite3 is native; ensure it gets included
     },

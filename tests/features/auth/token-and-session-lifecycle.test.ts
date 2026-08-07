@@ -8,8 +8,8 @@
  *
  * Tests here do not need a DB. The DB-bound invariants of the
  * `sessions` table (schema, FK CASCADE, hash-as-id) live in
- * `session-schema.test.ts`; the `revokeAllOtherSessions` SQL
- * pattern lives in `revocation.test.ts`.
+ * `session-schema.test.ts`; the revoke-all-other-sessions HTTP proof lives
+ * in `http-flows.test.ts`.
  */
 import { describe, it, expect } from 'vitest'
 import { createHash, randomBytes } from 'node:crypto'

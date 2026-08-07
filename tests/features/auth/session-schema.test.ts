@@ -9,7 +9,7 @@
  *
  * Companion files:
  *   token-and-session-lifecycle.test.ts  - pure helpers
- *   revocation.test.ts                    - revokeAllOtherSessions SQL pattern
+ *   http-flows.test.ts                    - setup-PIN revocation HTTP proof
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import Database from 'better-sqlite3'

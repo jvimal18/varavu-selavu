@@ -16,6 +16,7 @@ const managedEnvironmentKeys = [
   'NUXT_ALLOWED_ORIGINS',
   'NUXT_SESSION_SECRET',
   'NUXT_CSP_ENFORCE',
+  'NUXT_TEST_RUNTIME_PROBE',
 ] as const
 
 type ManagedEnvironmentKey = typeof managedEnvironmentKeys[number]
@@ -77,6 +78,10 @@ export async function createNuxtTestHarness(options: NuxtHarnessOptions = {}): P
     NUXT_ALLOWED_ORIGINS: allowedOrigins,
     NUXT_SESSION_SECRET: sessionSecret,
     NUXT_CSP_ENFORCE: cspEnforce ? 'true' : 'false',
+    // Enable the guarded test-only runtime pragma probe
+    // (`server/api/__test__/runtime-pragmas.get.ts`). The route returns 404
+    // unless this flag is set, so it never exposes anything in production.
+    NUXT_TEST_RUNTIME_PROBE: '1',
   }
   const previousEnvironment = new Map<ManagedEnvironmentKey, string | undefined>()
   for (const key of managedEnvironmentKeys) {

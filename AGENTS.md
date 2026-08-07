@@ -183,13 +183,21 @@ Three Nitro middlewares, in a fixed order pinned by filename prefix:
   allowlist in production rejects every state-changing request.
 - **`server/middleware/01.auth.ts`** (was `auth.ts`; renamed for ordering) — the
   global auth gate from v1.0.0, unchanged.
-- **`server/middleware/99.security-headers.ts`** (runs LAST) — `buildCsp({isDev,
-  enforce})` in `server/utils/csp.ts` emits the CSP, then the middleware sets
-  CSP (or `Content-Security-Policy-Report-Only` when `NUXT_CSP_ENFORCE !== 'true'`),
-  HSTS, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
-  `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy:
-  camera=(), microphone=(), geolocation=(), payment=()`. Runs last so 401/403/500
-  responses also get the headers.
+- **`server/middleware/99.security-headers.ts`** (runs LAST for normal API
+  responses) — calls the shared `applySecurityHeaders` policy from
+  `server/utils/security-headers.ts` to set CSP, HSTS, nosniff, frame,
+  referrer, and permissions headers. Runs last so 401/403 responses from the
+  auth/CSRF middlewares also carry the headers when Nitro delegates them
+  through the normal handler chain.
+- **`server/plugins/security-headers.ts`** (Nitro `render:response` hook) —
+  finalizes the same shared policy on responses that go through Nitro's
+  renderer (page renders, HTML responses).
+- **`server/error-handler.ts`** (configured `nitro.errorHandler`) — owns
+  early 401/403/500 error responses that bypass the `99` middleware. It
+  delegates to Nitro's default handler to preserve status, status text,
+  default body, and cache behavior, then re-applies the shared policy
+  case-insensitively before sending the result. String bodies are preserved
+  unchanged; only object bodies are JSON-stringified.
 
 The three env vars that drive this:
 - `NUXT_ALLOWED_ORIGINS` — comma-separated allowlist; required in prod.
@@ -317,10 +325,14 @@ Both scripts `process.exit(1)` on any failure including `PRAGMA integrity_check`
 - **Nitro middleware order is pinned by filename prefix** in
   `server/middleware/`. The fixed order is `00.csrf.ts` → `01.auth.ts` →
   `99.security-headers.ts`. CSRF must run first (so cross-origin state
-  changes 403 before any DB lookup); security headers must run last (so
-  401/403/500 also get them). If you add a new middleware, name it with a
-  number prefix to make the order explicit. Re-numbering an existing
-  file is a behavior change.
+  changes 403 before any DB lookup); security headers run last among the
+  three middlewares. Early 401/403/500 errors that bypass the `99`
+  middleware are finalized by `server/error-handler.ts` (configured
+  `nitro.errorHandler`) and the `render:response` plugin in
+  `server/plugins/security-headers.ts`, both applying the same shared
+  `applySecurityHeaders` policy from `server/utils/security-headers.ts`.
+  If you add a new middleware, name it with a number prefix to make the
+  order explicit. Re-numbering an existing file is a behavior change.
 - **CSRF is an `Origin` header check, not `X-Requested-With`.** Browsers
   always set `Origin` on `POST`/`PATCH`/`PUT`/`DELETE` and a cross-site
   attacker cannot spoof it (same-origin policy + CORS preflight). Nuxt's
@@ -335,6 +347,13 @@ Both scripts `process.exit(1)` on any failure including `PRAGMA integrity_check`
   the CSRF middleware rejects every state-changing `/api/*` request
   with 403. This is deliberate (fail-closed) but easy to miss — set it
   in the Pi env before restarting the service.
+- **`server/api/__test__/runtime-pragmas.get.ts` is a test-only probe.**
+  It returns 404 unless `NUXT_TEST_RUNTIME_PROBE=1` is set, so it
+  never exposes anything in production. Never set that env var on the
+  Pi; never delete the route without also removing or replacing
+  `tests/features/migrations/runtime-pragmas.test.ts`, which is the
+  only evidence that the live server-process `useDb()` connection
+  applies WAL, foreign keys, and `synchronous=NORMAL`.
 - **CSP ships as `Content-Security-Policy-Report-Only` by default** and
   flips to enforcing via `NUXT_CSP_ENFORCE=true`. ECharts uses
   `new Function()` internally for some formatter features, so the prod
@@ -391,19 +410,35 @@ Both scripts `process.exit(1)` on any failure including `PRAGMA integrity_check`
   this timer (the only one that gets auto-enabled on deploy); the export
   and binary-backup timers stay manual. The `User=budget` `Type=oneshot`
   service runs `node /var/lib/budget-tracker/scripts/cleanup-sessions.mjs`.
-- `tests/server/auth.test.ts` (24 tests) — the session model test
-  suite. `hashSessionToken` stability, `newSessionToken` 43-char base64url
-  + no-collision-in-100-trials, `TOKEN_LENGTH = 43` discriminator vs
-  legacy `u_vimal` / `u_pavithra` IDs, `shouldBumpLastSeen` debounce
-  (first-call / within-window / at-window / past-window / per-session
-  isolation), `sessions` table schema (columns, indexes, FK CASCADE, FK
-  reject), `revokeAllOtherSessions` SQL (keep-one, cross-user isolation,
-  no double-revoke).
+- `tests/features/auth/http-flows.test.ts` (14 tests) — the primary auth
+  HTTP contract: first-time setup with bcrypt persistence (`bcrypt.compare`
+  against the persisted `users.pin_hash`), no-PIN login 400, valid/invalid
+  login, full session-cookie contract (HttpOnly, non-Secure over HTTP,
+  SameSite=Lax, Path=/, Max-Age=30d), expired/legacy/revoked cookies,
+  current-PIN-required rotation with revoke-first ordering, cross-user
+  isolation, unknown-user 404, and malformed-setup 400 envelopes.
+- `tests/features/auth/{token-and-session-lifecycle,session-schema}.test.ts`
+  — pure token/debounce helpers and `sessions` table schema/index/FK
+  contracts. The previous mirrored `revocation.test.ts` was intentionally
+  removed because the setup-PIN HTTP flow above is the authoritative
+  `revokeAllOtherSessions` proof.
 - `server/middleware/{00.csrf,01.auth,99.security-headers}.ts` + the
-  `server/utils/{csrf,csp}.ts` pure helpers — the three Nitro middlewares
-  (in filename-prefix order: CSRF first, auth second, security headers
-  last) and the pure builders they call. The match in
+  `server/utils/{csrf,csp,security-headers}.ts` pure helpers — the three
+  Nitro middlewares (in filename-prefix order: CSRF first, auth second,
+  security headers last) and the pure builders they call. The match in
   `server/utils/csrf.ts:isOriginAllowed` is exact, no `startsWith`. The
   CSP emitted by `server/utils/csp.ts:buildCsp` is `Report-Only` when
   `NUXT_CSP_ENFORCE !== 'true'`. `tests/server/csrf.test.ts` (17 tests)
   and `tests/server/csp.test.ts` (11 tests) cover both.
+- `server/error-handler.ts` + `server/plugins/security-headers.ts` + the
+  shared `server/utils/security-headers.ts` policy — the dual-path
+  guarantee that the security policy lands on every response. The
+  configured `nitro.errorHandler` (`server/error-handler.ts`) delegates
+  to Nitro's default handler to preserve status, status text, default
+  body, and cache behavior, then re-applies the shared policy
+  case-insensitively. The Nitro `render:response` plugin finalizes the
+  same shared policy on renderer responses. The shared helper removes
+  owned header names (both CSP modes, HSTS, XCTO, XFO, Referrer-Policy,
+  Permissions-Policy) case-insensitively before assigning canonical
+  values, so a Nitro-default lower-case `no-referrer` or
+  `script-src 'none'` cannot leave a dual-policy response.
