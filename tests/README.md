@@ -66,8 +66,10 @@ gets a unique `NUXT_DB_PATH`.
 
 Per the TDD skill: **name the break, exercise the real thing, derive
 expected values by hand**. Before writing a test body, name the
-production change that would make it fail. If only a constant's value
-or a panic would fail it, it protects nothing.
+production change that would make it fail. If only an unrelated
+implementation constant or a panic would fail it, it protects nothing.
+Meaningful contractual constants are different: test the user-visible
+behavior that depends on the constant.
 
 ## When the test count disagrees with the matrix
 

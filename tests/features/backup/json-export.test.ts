@@ -7,7 +7,7 @@
  * fix; `1.2` after the sessions addition). Companion to:
  *   binary-backup.test.ts  - the schema-survival backup path
  *
- * Phase 2 of TESTING_PLAN.md adds the import-side contract for
+ * Phase 3 of TESTING_PLAN.md adds the import-side contract for
  * v1.0/v1.1/v1.2 snapshots and the API parity check between this
  * CLI and `/api/export/json`.
  */
