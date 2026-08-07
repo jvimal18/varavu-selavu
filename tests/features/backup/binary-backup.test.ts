@@ -1,26 +1,24 @@
 /**
- * Tests for the backup + export scripts.
+ * Backup & operations — binary SQLite backup (`runBackup`).
  *
- * Strategy: apply the real Drizzle migrations to an in-memory SQLite DB
- * (via the migrator on a temp file), insert minimal fixture data, then
- * exercise `runBackup` and `runExport` end-to-end.
+ * Capability: full-DB binary snapshots via `better-sqlite3`'s
+ * online backup API. Captures the schema, data, WAL state, and
+ * `__drizzle_migrations` journal. Companion to:
+ *   json-export.test.ts  - the human-readable snapshot path
  *
- * These tests run in the `node` Vitest environment and use `better-sqlite3`
- * directly (no Nuxt context). The scripts under test are .mjs files that
- * export a single function for testability — `import.meta.url` guarding the
- * CLI entry point lets us import them safely.
+ * Test strategy: file-backed SQLite (never `:memory:`) so the
+ * migrator and `db.backup()` behave as in production. The fixture
+ * seeds one row in every user-facing table so the backup has
+ * something to verify.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { runBackup } from '~~/scripts/backup-binary.mjs'
-import { runExport } from '~~/scripts/export.mjs'
-
-// ---- Test fixture helpers ----
 
 interface TestDb {
   tmpDir: string
@@ -54,8 +52,6 @@ function seedFixture(db: Database.Database): void {
       "VALUES ('t1', 'expense', 12345, '2026-01-15', 'a1', NULL, 'c1', 'Lunch', NULL, 'u1', '2026-01-15T00:00:00Z', '2026-01-15T00:00:00Z')",
   ).run()
 }
-
-// ---- runBackup ----
 
 describe('runBackup', () => {
   let ctx: TestDb
@@ -161,68 +157,5 @@ describe('runBackup', () => {
     } finally {
       verifyDb.close()
     }
-  })
-})
-
-// ---- runExport ----
-
-describe('runExport', () => {
-  let ctx: TestDb
-
-  beforeEach(() => { ctx = setupTestDb() })
-  afterEach(() => { teardownTestDb(ctx) })
-
-  it('produces a v1.2 snapshot with all 6 user-facing tables (PR 4 adds sessions)', () => {
-    seedFixture(ctx.db)
-    const outPath = join(ctx.tmpDir, 'snapshot.json')
-
-    const result = runExport({ dbPath: ctx.dbPath, outPath })
-
-    expect(result.outPath).toBe(outPath)
-    expect(result.counts.users).toBe(1)
-    expect(result.counts.accounts).toBe(1)
-    expect(result.counts.categories).toBe(1)
-    expect(result.counts.transactions).toBe(1)
-    expect(result.counts.userSettings).toBe(1)
-    expect(result.counts.sessions).toBe(0) // empty in this test (no auth flow)
-
-    const json = JSON.parse(readFileSync(outPath, 'utf8'))
-    expect(json.version).toBe('1.2')
-    expect(json.users).toHaveLength(1)
-    expect(json.accounts).toHaveLength(1)
-    expect(json.categories).toHaveLength(1)
-    expect(json.transactions).toHaveLength(1)
-    expect(json.userSettings).toHaveLength(1)
-    expect(json.sessions).toHaveLength(0)
-  })
-
-  it('integrity_check passes on the exported JSON (it opens as a real SQLite file)', () => {
-    seedFixture(ctx.db)
-    const outPath = join(ctx.tmpDir, 'snapshot.json')
-    runExport({ dbPath: ctx.dbPath, outPath })
-
-    // The JSON file itself can't be opened by SQLite, but the verification
-    // step in runExport opens it via Database which has special handling.
-    // (The 'snapshot.json' file is a regular JSON, not a SQLite file. The
-    // integrity_check assertion is on the file existence + the pre-check
-    // logic. What we test here is that the file was actually written.)
-    expect(existsSync(outPath)).toBe(true)
-  })
-
-  it('handles empty DBs (all counts 0, snapshot still valid)', () => {
-    const outPath = join(ctx.tmpDir, 'empty-snapshot.json')
-    const result = runExport({ dbPath: ctx.dbPath, outPath })
-
-    expect(result.counts).toEqual({
-      users: 0,
-      accounts: 0,
-      categories: 0,
-      transactions: 0,
-      userSettings: 0,
-      sessions: 0,
-    })
-
-    const json = JSON.parse(readFileSync(outPath, 'utf8'))
-    expect(json.version).toBe('1.2')
   })
 })
