@@ -12,12 +12,20 @@ build
 node_modules
 .pnpm-store
 
-# Database (local dev)
+# Database (local dev + prod backups)
+# Catches: data/dev.db, budget-backup.db, *.db-wal, *.db-shm, *.db.bak-*
 data/
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
+# Safety backups of any DB before a migration (rename-on-deploy workflow)
+*.bak-*
+# WAL-mode files for prod backups (redundant with the .db-wal pattern but
+# explicit so future-you doesn't get a surprise on git status)
+budget-backup.db-wal
+budget-backup.db-shm
+budget-backup.db-journal
 
 # Exports
 exports/
@@ -34,6 +42,7 @@ scripts/.env
 .opencode/
 .agents/
 .claude/
+.slim/deepwork/
 
 # Drizzle migrations ARE tracked
 
