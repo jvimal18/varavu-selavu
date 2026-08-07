@@ -108,11 +108,24 @@ export async function createNuxtTestHarness(options: NuxtHarnessOptions = {}): P
     await runDatabaseScript('server/db/seed.ts', testEnvironment)
 
     // This is intentionally the e2e setup boundary, not a direct Nitro handler call.
+    // The Nuxt build is produced once by tests/helpers/global-setup.ts before any
+    // test file runs. This harness only starts a server from the prebuilt .output/
+    // — 15 serial builds → 1 build, dropping runtime from ~17m to ~5-7m.
+    // `build: false` also changes @nuxt/test-utils' default nitro output dir to a
+    // random `.nuxt/test/<id>/output` that would never be built, so the real
+    // prebuilt output dir is pinned explicitly below.
     await setup({
       rootDir,
       runner: 'vitest',
       server: true,
-      build: true,
+      build: false, // <-- changed: use the prebuilt .output/ from globalSetup
+      nuxtConfig: {
+        nitro: {
+          output: {
+            dir: resolve(rootDir, '.output'),
+          },
+        },
+      },
       env: testEnvironment,
     })
   } catch (error) {

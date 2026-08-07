@@ -51,8 +51,12 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Run tests
-        run: pnpm test:run
-
+      # Build before tests: the test suite starts every HTTP harness from the
+      # prebuilt .output/ (setup build:false), so the build must exist first.
+      # The old order built after tests, forcing each test file to build its
+      # own Nuxt output and blowing the 15m job timeout.
       - name: Build
         run: pnpm build
+
+      - name: Run tests
+        run: pnpm test:run

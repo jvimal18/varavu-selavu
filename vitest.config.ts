@@ -22,6 +22,11 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    // Build the Nuxt app exactly once before all test files, then let every
+    // harness start a server from the prebuilt .output/ (setup build:false in
+    // tests/helpers/nuxt-server.ts). Previously each HTTP file forced its own
+    // `nuxt build` (~14m of the ~17m suite) — see tests/helpers/global-setup.ts.
+    globalSetup: ['./tests/helpers/global-setup.ts'],
     // Per-test isolation. Drizzle + better-sqlite3 :memory: tests would need
     // separate workers; pure-function tests don't.
     isolate: true,
